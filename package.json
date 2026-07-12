@@ -1,0 +1,15 @@
+{
+  "name": "secret-hitler-web",
+  "version": "1.0.0",
+  "description": "A real-time web-based implementation of Secret Hitler.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  },
+  "author": "Developer",
+  "license": "CC-BY-NC-SA-4.0"
+}

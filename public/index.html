@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secret Hitler - Play Room</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="setup-screen" class="screen main-menu animate-fade">
+            <h1 class="game-logo">Secret Hitler</h1>
+            <div class="menu-box">
+                <input type="text" id="username" placeholder="Enter Your Name" autocomplete="off">
+                <button id="btn-create" class="btn wood-btn primary">Create New Lobby</button>
+                <div class="divider"><span>OR</span></div>
+                <input type="text" id="room-code" placeholder="4-Letter Code" maxlength="4">
+                <button id="btn-join" class="btn wood-btn secondary">Join Existing Lobby</button>
+            </div>
+        </div>
+
+        <div id="lobby-screen" class="screen hidden animate-fade">
+            <div class="board-header">
+                <h2>LOBBY CODE: <span id="display-code" class="code-highlight">----</span></h2>
+            </div>
+            <div class="lobby-box">
+                <div class="bozbey-rule-card animate-pop">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="chk-bozbey">
+                        <span class="custom-chk-text">Bozbey version 1.0</span>
+                    </label>
+                </div>
+
+                <h3>Players in the Lobby (<span id="lobby-count">1</span>/10 Joined - Requires 5 to Start):</h3>
+                <ul id="player-list"></ul>
+                <div class="lobby-controls">
+                    <button id="btn-add-bot" class="btn control-btn hidden">Add AI Bot</button>
+                    <button id="btn-remove-bot" class="btn control-btn hidden" style="background: linear-gradient(to bottom, #d32f2f, #c62828);">Remove Bot</button>
+                    <button id="btn-start" class="btn success-btn hidden">Start Match</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="game-screen" class="screen hidden animate-fade">
+            <div class="game-top-bar">
+                <div id="role-badge" class="secret-role-card">Role: Unknown</div>
+                <div class="phase-display"><span id="current-phase-text">Phase: Setup</span></div>
+            </div>
+
+            <div class="chaos-tracker-panel animate-pop">
+                <div class="tracker-label">ELECTION TRACKER (3 FAILS = CHAOS):</div>
+                <div class="tracker-slots-row" id="chaos-dots-container">
+                    <div class="chaos-dot-node" data-index="1">1</div>
+                    <div class="chaos-dot-node" data-index="2">2</div>
+                    <div class="chaos-dot-node danger-node" data-index="3">☠</div>
+                </div>
+            </div>
+
+            <div class="deck-zone">
+                <div class="deck-pile draw-pile animate-pop">
+                    <div class="pile-title">DRAW DECK</div>
+                    <div id="deck-count" class="pile-number">17</div>
+                </div>
+                <div class="deck-pile discard-pile animate-pop">
+                    <div class="pile-title">DISCARDED</div>
+                    <div id="discard-count" class="pile-number">0</div>
+                </div>
+            </div>
+
+            <div class="board-table-felt">
+                <div class="visual-board liberal-board">
+                    <div class="board-title">LIBERAL POLICIES</div>
+                    <div class="track-slots" id="liberal-slots-track"></div>
+                </div>
+                <div class="visual-board fascist-board">
+                    <div class="board-title">FASCIST POLICIES</div>
+                    <div class="track-slots" id="fascist-slots-track"></div>
+                </div>
+            </div>
+
+            <div class="action-console animate-pop">
+                <p id="action-prompt">Waiting for players...</p>
+                <div id="interactive-controls" class="button-row"></div>
+            </div>
+
+            <div class="seating-chart">
+                <h3>Player Turn Seating (Rotates Top to Bottom)</h3>
+                <div id="game-players-list" class="players-vertical-list"></div>
+            </div>
+        </div>
+
+        <div id="end-screen" class="screen hidden animate-fade">
+            <h1 id="victory-title" class="victory-banner">Victory!</h1>
+            <p id="victory-reason" class="victory-subtext"></p>
+            <button onclick="window.location.reload()" class="btn wood-btn primary">Return to Menu</button>
+        </div>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

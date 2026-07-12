@@ -1,0 +1,259 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Oswald:wght@400;500;600&display=swap');
+
+body {
+    background: radial-gradient(circle, #2b1815 0%, #0d0605 100%);
+    color: #f7f1e3;
+    font-family: 'Oswald', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    user-select: none;
+}
+
+#game-container {
+    background: #3a221d;
+    padding: 30px;
+    border-radius: 20px;
+    width: 95%;
+    max-width: 850px;
+    box-shadow: 0 22px 50px rgba(0,0,0,0.8), inset 0 0 30px rgba(0,0,0,0.6);
+    border: 8px solid #57342c;
+}
+
+.hidden { display: none !important; }
+
+.animate-fade { animation: fadeIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
+.animate-pop { animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes popIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
+@keyframes governmentGlow {
+    0% { border-color: #d84315; box-shadow: 0 0 5px #d84315; }
+    50% { border-color: #ffb300; box-shadow: 0 0 20px #ffb300; }
+    100% { border-color: #d84315; box-shadow: 0 0 5px #d84315; }
+}
+@keyframes targetDangerPulse {
+    0% { border-color: #ff3d00; background: rgba(255, 61, 0, 0.1); }
+    50% { border-color: #ff9100; background: rgba(255, 61, 0, 0.3); }
+    100% { border-color: #ff3d00; background: rgba(255, 61, 0, 0.1); }
+}
+@keyframes electionPurplePulse {
+    0% { border-color: #9c27b0; background: rgba(156, 39, 176, 0.05); }
+    50% { border-color: #ba68c8; background: rgba(156, 39, 176, 0.25); }
+    100% { border-color: #9c27b0; background: rgba(156, 39, 176, 0.05); }
+}
+@keyframes trackerActivePulse {
+    0% { background: #ffcc00; box-shadow: 0 0 2px #ffcc00; }
+    50% { background: #ff6600; box-shadow: 0 0 15px #ff6600; }
+    100% { background: #ffcc00; box-shadow: 0 0 2px #ffcc00; }
+}
+
+.game-logo {
+    font-family: 'Cinzel', serif;
+    font-weight: 900;
+    color: #ff3d00;
+    text-shadow: 3px 4px 0px #1a0500, 0 10px 20px rgba(0,0,0,0.6);
+    font-size: 3.5rem;
+    letter-spacing: 4px;
+    margin-bottom: 25px;
+}
+
+.menu-box, .lobby-box {
+    background: rgba(15, 8, 7, 0.6);
+    padding: 30px;
+    border-radius: 12px;
+    border: 2px solid #57342c;
+    box-shadow: inset 0 4px 20px rgba(0,0,0,0.5);
+}
+
+#player-list {
+    list-style: none;
+    padding: 0;
+    margin: 20px 0;
+    text-align: left;
+}
+#player-list li {
+    background: #2b1714;
+    padding: 12px 20px;
+    margin: 8px 0;
+    border-radius: 6px;
+    border-left: 5px solid #ff3d00;
+    font-size: 1.2rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+}
+
+input[type="text"] {
+    width: 85%;
+    max-width: 320px;
+    padding: 14px;
+    margin: 12px auto;
+    display: block;
+    background: #120706;
+    border: 2px solid #74453b;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 1.2rem;
+    text-align: center;
+}
+
+.btn {
+    padding: 14px 32px;
+    font-size: 1.15rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    border-radius: 8px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 5px 10px rgba(0,0,0,0.4);
+}
+.btn:hover { transform: translateY(-3px); box-shadow: 0 8px 16px rgba(0,0,0,0.5); }
+
+.wood-btn.primary { background: linear-gradient(to bottom, #d32f2f, #9a0007); color: white; }
+.wood-btn.secondary { background: linear-gradient(to bottom, #4e342e, #260e04); color: #f7f1e3; border: 1px solid #795548; }
+.success-btn { background: linear-gradient(to bottom, #388e3c, #1b5e20); color: white; }
+.control-btn { background: linear-gradient(to bottom, #f57c00, #e65100); color: white; }
+
+.lobby-controls { display: flex; justify-content: center; gap: 15px; margin-top: 20px; }
+
+/* 1. Chaos Counter UI Layout Classes */
+.chaos-tracker-panel {
+    background: #21110e;
+    border: 2px solid #57342c;
+    padding: 12px;
+    border-radius: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+.tracker-label { font-size: 0.95rem; font-weight: bold; color: #bcaaa4; letter-spacing: 1px; }
+.tracker-slots-row { display: flex; gap: 15px; }
+.chaos-dot-node {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #42221b;
+    border: 2px solid #6d4c41;
+    line-height: 28px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    color: #8d6e63;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+.chaos-dot-node.active-tracker-point {
+    background: #ff9100;
+    border-color: #fff;
+    color: #fff;
+    animation: trackerActivePulse 1.8s infinite ease-in-out;
+}
+.chaos-dot-node.danger-node { border-color: #c62828; color: #e57373; }
+.chaos-dot-node.danger-node.active-tracker-point { background: #c62828; animation: trackerActivePulse 0.8s infinite ease-in-out; }
+
+.deck-zone { display: flex; justify-content: center; gap: 40px; margin: 20px 0; }
+.deck-pile { width: 90px; height: 130px; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 10px 20px rgba(0,0,0,0.6); border: 4px solid #fff; }
+.draw-pile { background: repeating-linear-gradient(45deg, #795548, #795548 10px, #5d4037 10px, #5d4037 20px); border-color: #ffb300; }
+.discard-pile { background: radial-gradient(circle, #616161 0%, #212121 100%); border-color: #cfd8dc; }
+.pile-title { font-size: 0.8rem; font-weight: 600; color: #fff; text-shadow: 1px 1px 3px #000; margin-bottom: 5px; }
+.pile-number { font-size: 2.4rem; font-weight: bold; color: #fff; text-shadow: 2px 3px 6px #000; }
+
+.board-table-felt { background: #0f2316; border: 10px solid #271410; border-radius: 14px; padding: 25px; margin: 25px 0; box-shadow: inset 0 0 40px rgba(0,0,0,0.9); }
+.visual-board { margin-bottom: 25px; padding: 15px; border-radius: 8px; }
+.liberal-board { background: rgba(13, 71, 161, 0.3); border: 3px solid #0d47a1; }
+.fascist-board { background: rgba(183, 28, 28, 0.3); border: 3px solid #b71c1c; }
+.board-title { font-family: 'Cinzel', serif; font-size: 1.4rem; font-weight: 700; letter-spacing: 3px; margin-bottom: 12px; }
+
+.track-slots { display: flex; justify-content: center; gap: 14px; }
+.slot { width: 55px; height: 80px; border: 2px dashed #6d4c41; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: bold; color: #75615c; background: rgba(0,0,0,0.15); transition: all 0.3s ease; }
+.slot.filled-Liberal { background: #1976d2; border: 2px solid #fff; color: white; transform: scale(1.05); }
+.slot.filled-Fascist { background: #d32f2f; border: 2px solid #fff; color: white; transform: scale(1.05); }
+
+.slot.power-investigate { border-color: #ffb300; color: #ffb300; background: rgba(255, 179, 0, 0.08); }
+.slot.power-peek { border-color: #03a9f4; color: #03a9f4; background: rgba(3, 169, 244, 0.08); }
+.slot.power-election { border-color: #9c27b0; color: #9c27b0; animation: electionPurplePulse 3s infinite ease-in-out; }
+.slot.power-execution { border-color: #ff3d00; color: #ff3d00; animation: targetDangerPulse 3s infinite ease-in-out; }
+
+.policy-card { display: inline-block; width: 90px; height: 135px; margin: 12px; border-radius: 10px; line-height: 135px; font-size: 1.3rem; font-weight: bold; color: white; cursor: pointer; box-shadow: 0 8px 16px rgba(0,0,0,0.6); border: 4px solid #fff; text-align: center;}
+.policy-card:hover { transform: translateY(-10px) scale(1.05); }
+.card-Liberal { background: radial-gradient(circle, #2196f3 0%, #0d47a1 100%); }
+.card-Fascist { background: radial-gradient(circle, #f44336 0%, #b71c1c 100%); }
+
+.action-console { background: #271410; border-left: 6px solid #ff3d00; padding: 20px; border-radius: 8px; margin-bottom: 25px; }
+#action-prompt { font-size: 1.3rem; margin-bottom: 15px; color: #ffb300; font-weight: 500; }
+.button-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+
+.seating-chart { background: rgba(15, 8, 7, 0.7); padding: 20px; border-radius: 12px; border: 2px solid #57342c; }
+.seating-chart h3 { border-bottom: 2px solid #57342c; padding-bottom: 8px; margin-bottom: 15px; text-align: center; color: #cca59e; }
+
+.player-row-card { display: flex; justify-content: space-between; align-items: center; background: #23120f; padding: 12px 20px; margin: 8px 0; border-radius: 8px; border: 2px solid transparent; }
+.player-row-card.active-gov { animation: governmentGlow 2.5s infinite; }
+
+.player-row-card.dead-player { background: #1c110f !important; opacity: 0.45; text-decoration: line-through; border-left: 4px solid #616161 !important; }
+.player-row-card.disconnected-player { background: #1b1615 !important; border-left: 4px dashed #78909c !important; opacity: 0.6; }
+
+.badge-tag { font-size: 0.85rem; font-weight: bold; padding: 4px 10px; border-radius: 4px; margin-left: 6px; }
+.badge-tag.pres { background: #ffb300; color: #000; }
+.badge-tag.chan { background: #ff3d00; color: #fff; }
+.badge-tag.voted { background: #4caf50; color: #fff; }
+.badge-tag.team-fascist { background: #b71c1c; color: #fff; }
+.badge-tag.team-hitler { background: #000000; color: #ff3d00; border: 1px solid #ff3d00; }
+.badge-tag.offline { background: #546e7a; color: #fff; }
+
+/* 2. Persistent Intel Badge Tag Style */
+.badge-tag.intel-report {
+    background: linear-gradient(135deg, #6a1b9a 0%, #4a148c 100%);
+    color: #fff;
+    border: 1px solid #ba68c8;
+}
+
+.secret-role-card { background: #120706; padding: 10px 20px; border-radius: 6px; border: 2px solid #ff3d00; font-size: 1.1rem; font-weight: bold; }
+.phase-display { font-size: 1.2rem; font-weight: bold; color: #ffb300; letter-spacing: 1px; }
+.game-top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+/* Bozbey Rule Modifier Card Aesthetics */
+.bozbey-rule-card {
+    background: linear-gradient(135deg, #2c120f 0%, #150604 100%);
+    border: 2px solid #7e57c2;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 15px rgba(126, 87, 194, 0.2);
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    font-size: 1.3rem;
+    font-weight: 500;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+    cursor: pointer;
+    accent-color: #7e57c2;
+}
+
+.custom-chk-text {
+    color: #b39ddb;
+    letter-spacing: 1px;
+    text-shadow: 1px 1px 2px #000;
+}
+
+.checkbox-label input[type="checkbox"]:disabled + .custom-chk-text {
+    color: #5d4d57;
+    cursor: not-allowed;
+}
