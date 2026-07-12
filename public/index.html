@@ -47,23 +47,24 @@
                 <div class="phase-display"><span id="current-phase-text">Phase: Setup</span></div>
             </div>
 
-            <div class="chaos-tracker-panel animate-pop">
-                <div class="tracker-label">ELECTION TRACKER (3 FAILS = CHAOS):</div>
-                <div class="tracker-slots-row" id="chaos-dots-container">
-                    <div class="chaos-dot-node" data-index="1">1</div>
-                    <div class="chaos-dot-node" data-index="2">2</div>
-                    <div class="chaos-dot-node danger-node" data-index="3">☠</div>
+            <div class="compact-stats-bar animate-pop">
+                <div class="mini-stat-node draw-node">
+                    <span class="stat-label">DRAW</span>
+                    <span id="deck-count" class="stat-val">17</span>
                 </div>
-            </div>
+                
+                <div class="mini-chaos-tracker">
+                    <span class="stat-label">CHAOS</span>
+                    <div class="mini-tracker-dots">
+                        <div class="mini-dot" data-index="1">1</div>
+                        <div class="mini-dot" data-index="2">2</div>
+                        <div class="mini-dot mini-danger" data-index="3">☠</div>
+                    </div>
+                </div>
 
-            <div class="deck-zone">
-                <div class="deck-pile draw-pile animate-pop">
-                    <div class="pile-title">DRAW DECK</div>
-                    <div id="deck-count" class="pile-number">17</div>
-                </div>
-                <div class="deck-pile discard-pile animate-pop">
-                    <div class="pile-title">DISCARDED</div>
-                    <div id="discard-count" class="pile-number">0</div>
+                <div class="mini-stat-node discard-node">
+                    <span class="stat-label">DISCARD</span>
+                    <span id="discard-count" class="stat-val">0</span>
                 </div>
             </div>
 
@@ -78,14 +79,23 @@
                 </div>
             </div>
 
-            <div class="action-console animate-pop">
-                <p id="action-prompt">Waiting for players...</p>
-                <div id="interactive-controls" class="button-row"></div>
+            <div class="passive-status-panel">
+                <p id="passive-prompt-text">Waiting for turn loop initialization...</p>
             </div>
 
             <div class="seating-chart">
                 <h3>Player Turn Seating (Rotates Top to Bottom)</h3>
                 <div id="game-players-list" class="players-vertical-list"></div>
+            </div>
+        </div>
+
+        <div id="action-modal-overlay" class="modal-overlay hidden">
+            <div class="modal-card-box animate-pop">
+                <div class="modal-header-ribbon">ACTION REQUIRED</div>
+                <div class="modal-inner-content">
+                    <p id="action-prompt">Choose an option to proceed:</p>
+                    <div id="interactive-controls" class="button-row"></div>
+                </div>
             </div>
         </div>
 
