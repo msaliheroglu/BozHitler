@@ -347,3 +347,39 @@ input[type="text"] {
     .btn { padding: 12px 20px; font-size: 1rem; width: 100%; }
     .lobby-controls { flex-direction: column; }
 }
+/* ==========================================================================
+   LEGALLY AUTHORITATIVE ATTRIBUTION FOOTER STYLING
+   ========================================================================== */
+.legal-credits-attribution {
+    margin-top: 30px;
+    padding-top: 15px;
+    border-top: 2px solid #57342c;
+    font-size: 0.75rem;
+    color: #a67c74;
+    text-align: center;
+    line-height: 1.6;
+    letter-spacing: 0.5px;
+}
+
+.legal-credits-attribution p {
+    margin: 4px 0;
+}
+
+.legal-credits-attribution a {
+    color: #ff3d00;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.legal-credits-attribution a:hover {
+    color: #ff9100;
+    text-decoration: underline;
+}
+
+@media (max-width: 600px) {
+    .legal-credits-attribution {
+        font-size: 0.7rem;
+        margin-top: 20px;
+    }
+}

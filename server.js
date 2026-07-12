@@ -113,7 +113,7 @@ function getSanitizedState(room, playerId) {
                 isPresident: room.players[room.presidentIdx]?.id === p.id,
                 isChancellor: room.players[room.chancellorIdx]?.id === p.id,
                 hasVoted: room.votes[p.id] !== undefined,
-                voteValue: room.phase === 'VOTE_REVEAL' ? room.votes[p.id] : null, // Exposes vote choices securely during disclosure
+                voteValue: room.phase === 'VOTE_REVEAL' ? room.votes[p.id] : null, 
                 isDead: p.isDead,
                 isDisconnected: p.isDisconnected,
                 isEligibleChancellor: eligibleChancellor,
@@ -213,10 +213,24 @@ function triggerBotActions(roomCode) {
         }
 
         if (room.phase === 'LEGISLATIVE_CHANCELLOR' && currentChancellor?.isBot) {
+            // AI Chancellor Veto Check
+            if (room.fascistPolicies === 5 && currentChancellor.role === 'Liberal' && !room.drawnCards.includes('Liberal')) {
+                room.phase = 'VETO_REQUEST';
+                broadcastState(roomCode);
+                return;
+            }
+
             let enactIndex = currentChancellor.role === 'Liberal' ? 
                 room.drawnCards.findIndex(c => c === 'Liberal') : room.drawnCards.findIndex(c => c === 'Fascist');
             if (enactIndex === -1) enactIndex = 0;
             executeEnact(roomCode, enactIndex);
+        }
+
+        // AI President Veto Response Check
+        if (room.phase === 'VETO_REQUEST' && currentPresident?.isBot) {
+            const accept = currentPresident.role === 'Liberal' || !room.drawnCards.includes('Fascist');
+            executeVetoResolution(room, accept);
+            broadcastState(roomCode);
         }
 
         if (room.phase === 'PRESIDENTIAL_POWER_PEEK' && currentPresident?.isBot) {
@@ -274,16 +288,44 @@ function checkAndReplenishDeck(room) {
     }
 }
 
+// Dedicated function resolving the veto evaluations securely
+function executeVetoResolution(room, accept) {
+    if (accept) {
+        room.discardPile.push(room.drawnCards[0]);
+        room.discardPile.push(room.drawnCards[1]);
+        room.drawnCards = [];
+        room.electionTracker += 1; // Advances ticker failure count by 1
+
+        if (room.electionTracker >= 3) {
+            if (room.deck.length < 1) {
+                const shuffledDiscard = shuffle(room.discardPile);
+                room.deck = shuffledDiscard.concat(room.deck);
+                room.discardPile = [];
+            }
+            const topPolicy = room.deck.pop();
+            if (topPolicy === 'Liberal') room.liberalPolicies++;
+            else room.fascistPolicies++;
+            room.electionTracker = 0;
+            room.lastElectedPresidentId = null;
+            room.lastElectedChancellorId = null;
+
+            if (room.liberalPolicies >= 5) { room.status = 'FINISHED'; room.winner = 'Liberals'; }
+            else if (room.fascistPolicies >= 6) { room.status = 'FINISHED'; room.winner = 'Fascists'; }
+        }
+        advanceTurn(room);
+    } else {
+        room.phase = 'LEGISLATIVE_CHANCELLOR'; // Force chancellor selection back down loop
+    }
+}
+
 function evaluateVotes(roomCode) {
     const room = rooms[roomCode.toUpperCase()];
     const activeVoters = room.players.filter(p => !p.isDead && !p.isDisconnected);
     if (Object.keys(room.votes).length !== activeVoters.length) return;
 
-    // Shift to a temporary disclosure phase
     room.phase = 'VOTE_REVEAL';
     broadcastState(roomCode);
 
-    // Freeze game execution loop for exactly 2 seconds (2000 milliseconds)
     setTimeout(() => {
         const currentRoom = rooms[roomCode.toUpperCase()];
         if (!currentRoom) return;
@@ -300,6 +342,7 @@ function evaluateVotes(roomCode) {
             currentRoom.lastElectedPresidentId = currentRoom.players[currentRoom.presidentIdx].id;
             currentRoom.lastElectedChancellorId = currentRoom.players[currentRoom.chancellorIdx].id;
 
+            currentRoom.phase = 'LEGISLATIVE_PREVIEW'; // Wait, let's keep name aligned
             currentRoom.phase = 'LEGISLATIVE_PRESIDENT';
             checkAndReplenishDeck(currentRoom);
             currentRoom.drawnCards = [currentRoom.deck.pop(), currentRoom.deck.pop(), currentRoom.deck.pop()];
@@ -317,13 +360,12 @@ function evaluateVotes(roomCode) {
                 if (topPolicy === 'Liberal') currentRoom.liberalPolicies++;
                 else currentRoom.fascistPolicies++;
                 currentRoom.electionTracker = 0;
-
                 currentRoom.lastElectedPresidentId = null;
                 currentRoom.lastElectedChancellorId = null;
             }
             advanceTurn(currentRoom);
         }
-        currentRoom.votes = {}; // Clear ballot history safely after reveal window closes
+        currentRoom.votes = {}; 
         broadcastState(roomCode);
     }, 2000);
 }
@@ -377,16 +419,10 @@ io.on('connection', (socket) => {
     socket.on('createRoom', (playerName) => {
         const roomCode = generateRoomCode();
         rooms[roomCode] = {
-            code: roomCode, 
-            status: 'LOBBY',
-            hostId: socket.id, 
+            code: roomCode, status: 'LOBBY', hostId: socket.id, 
             players: [{ id: socket.id, name: playerName, role: null, isBot: false, isDead: false, isDisconnected: false }],
             deck: [], discardPile: [], presidentIdx: 0, lastRegularPresidentIdx: 0, chancellorIdx: null,
-            liberalPolicies: 0, fascistPolicies: 0, electionTracker: 0,
-            phase: 'SETUP', votes: {}, drawnCards: [], winner: null, specialPresidentActive: false,
-            lastElectedPresidentId: null, lastElectedChancellorId: null,
-            investigations: {},
-            bozbeyMode: false
+            liberalPolicies: 0, fascistPolicies: 0, electionTracker: 0, phase: 'SETUP', votes: {}, drawnCards: [], winner: null, specialPresidentActive: false, lastElectedPresidentId: null, lastElectedChancellorId: null, investigations: {}, bozbeyMode: false
         };
         socket.join(roomCode);
         socket.emit('roomCreated', roomCode);
@@ -408,13 +444,9 @@ io.on('connection', (socket) => {
         const code = roomCode.toUpperCase();
         const room = rooms[code];
         if (!room) return socket.emit('errorMsg', 'Lobby not found.');
-        
         const dynamicHost = room.players.find(p => !p.isBot);
-        if (!dynamicHost || socket.id !== dynamicHost.id) {
-            return socket.emit('errorMsg', 'Action denied. Only the lobby host can add AI bots.');
-        }
-        if (room.status !== 'LOBBY') return;
-        if (room.players.length >= 10) return;
+        if (!dynamicHost || socket.id !== dynamicHost.id) return socket.emit('errorMsg', 'Action denied.');
+        if (room.status !== 'LOBBY' || room.players.length >= 10) return;
 
         const botId = `bot_${Math.random().toString(36).substr(2, 9)}`;
         const name = botNames[room.players.filter(p => p.isBot).length] || `Gemini Bot ${room.players.length + 1}`;
@@ -427,11 +459,8 @@ io.on('connection', (socket) => {
         const code = roomCode.toUpperCase();
         const room = rooms[code];
         if (!room) return;
-
         const dynamicHost = room.players.find(p => !p.isBot);
-        if (!dynamicHost || socket.id !== dynamicHost.id) {
-            return socket.emit('errorMsg', 'Only the lobby host can remove AI bots.');
-        }
+        if (!dynamicHost || socket.id !== dynamicHost.id) return;
         if (room.status !== 'LOBBY') return;
 
         const lastBotIdx = room.players.map(p => p.isBot).lastIndexOf(true);
@@ -456,10 +485,7 @@ io.on('connection', (socket) => {
             return;
         }
 
-        if (room.status !== 'LOBBY' || room.players.length >= 10) {
-            return socket.emit('errorMsg', 'Cannot join lobby.');
-        }
-        
+        if (room.status !== 'LOBBY' || room.players.length >= 10) return socket.emit('errorMsg', 'Cannot join lobby.');
         room.players.push({ id: socket.id, name: playerName, role: null, isBot: false, isDead: false, isDisconnected: false });
         socket.join(code);
         broadcastState(code);
@@ -470,9 +496,7 @@ io.on('connection', (socket) => {
         const room = rooms[roomCode.toUpperCase()];
         const dynamicHost = room ? room.players.find(p => !p.isBot) : null;
         if (!room || !dynamicHost || socket.id !== dynamicHost.id) return;
-        if (room.players.length < 5) {
-            return socket.emit('errorMsg', 'Cannot start match! Minimum 5 players required.');
-        }
+        if (room.players.length < 5) return socket.emit('errorMsg', 'Minimum 5 players required.');
         room.players = shuffle(room.players);
         room.status = 'IN_PROGRESS';
         room.phase = 'NOMINATION';
@@ -489,8 +513,8 @@ io.on('connection', (socket) => {
         if (!room || room.phase !== 'NOMINATION' || socket.id === chancellorId) return;
         
         const livingCount = room.players.filter(p => !p.isDead).length;
-        if (chancellorId === room.lastElectedChancellorId) return socket.emit('errorMsg', 'Player is restricted by Chancellor term limits.');
-        if (livingCount > 5 && chancellorId === room.lastElectedPresidentId) return socket.emit('errorMsg', 'Player is restricted by Presidential term limits.');
+        if (chancellorId === room.lastElectedChancellorId) return socket.emit('errorMsg', 'Restricted by term limits.');
+        if (livingCount > 5 && chancellorId === room.lastElectedPresidentId) return socket.emit('errorMsg', 'Restricted by term limits.');
 
         room.chancellorIdx = room.players.findIndex(p => p.id === chancellorId);
         room.phase = 'VOTING';
@@ -504,6 +528,27 @@ io.on('connection', (socket) => {
         if (!room || room.phase !== 'VOTING') return;
         room.votes[socket.id] = vote;
         evaluateVotes(roomCode);
+    });
+
+    socket.on('requestVeto', (roomCode) => {
+        if (!roomCode) return;
+        const room = rooms[roomCode.toUpperCase()];
+        if (!room || room.phase !== 'LEGISLATIVE_CHANCELLOR') return;
+        if (room.players[room.chancellorIdx].id !== socket.id) return;
+        if (room.fascistPolicies !== 5) return; // Strict lock check
+
+        room.phase = 'VETO_REQUEST';
+        broadcastState(roomCode);
+    });
+
+    socket.on('respondToVeto', ({ roomCode, accept }) => {
+        if (!roomCode) return;
+        const room = rooms[roomCode.toUpperCase()];
+        if (!room || room.phase !== 'VETO_REQUEST') return;
+        if (room.players[room.presidentIdx].id !== socket.id) return;
+
+        executeVetoResolution(room, accept);
+        broadcastState(roomCode);
     });
 
     socket.on('presidentDiscard', ({ roomCode, keepIndex1, keepIndex2 }) => {
@@ -538,16 +583,12 @@ io.on('connection', (socket) => {
         if (!roomCode) return;
         const room = rooms[roomCode.toUpperCase()];
         if (!room || room.phase !== 'PRESIDENTIAL_POWER_INVESTIGATE') return;
-        
         const investigator = room.players.find(p => p.id === socket.id);
         const target = room.players.find(p => p.id === targetId);
-        
         if (investigator && target) {
             const party = (target.role === 'Fascist' || target.role === 'Hitler') ? 'FASCIST' : 'LIBERAL';
-            
             if (!room.investigations[investigator.name]) room.investigations[investigator.name] = {};
             room.investigations[investigator.name][target.name] = party;
-
             socket.emit('investigationLoyaltyResult', { name: target.name, party: party });
             advanceTurn(room);
             broadcastState(roomCode);
@@ -575,10 +616,9 @@ io.on('connection', (socket) => {
         const target = room.players.find(p => p.id === targetId);
         if (target && !target.isDead) {
             target.isDead = true;
-            
             if (target.role === 'Bozbey') {
                 room.status = 'FINISHED';
-                room.winner = `Bozbey (${target.name} successfully manipulated the table to get executed and won!)`;
+                room.winner = `Bozbey (${target.name} won!)`;
             } else if (target.role === 'Hitler') {
                 room.status = 'FINISHED';
                 room.winner = 'Liberals (Hitler was executed!)';
@@ -596,18 +636,12 @@ io.on('connection', (socket) => {
             if (idx !== -1) {
                 if (room.status === 'LOBBY') {
                     room.players.splice(idx, 1);
-                    
                     const nextHumanHost = room.players.find(p => !p.isBot);
-                    if (nextHumanHost) {
-                        room.hostId = nextHumanHost.id; 
-                    } else {
-                        delete rooms[code]; 
-                    }
+                    if (nextHumanHost) room.hostId = nextHumanHost.id; 
+                    else delete rooms[code]; 
                 } else {
                     room.players[idx].isDisconnected = true;
-                    if (room.phase === 'VOTING') {
-                        evaluateVotes(code);
-                    }
+                    if (room.phase === 'VOTING') evaluateVotes(code);
                 }
                 broadcastState(code);
                 break;
@@ -616,4 +650,4 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(3000, () => console.log('Server running on port 3000'));
+server.listen(process.env.PORT || 3000, () => console.log('Server running safely'));

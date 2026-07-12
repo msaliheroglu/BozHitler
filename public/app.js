@@ -63,7 +63,6 @@ socket.on('gameStateUpdate', (state) => {
         setupScreen.classList.add('hidden');
         lobbyScreen.classList.remove('hidden');
         document.getElementById('lobby-count').textContent = state.players.length;
-        
         chkBozbey.checked = state.bozbeyMode;
         const botCount = state.players.filter(p => p.id.startsWith('bot_')).length;
 
@@ -118,13 +117,9 @@ socket.on('gameStateUpdate', (state) => {
             if(p.isPresident) badges += `<span class="badge-tag pres">PRESIDENT</span>`;
             if(p.isChancellor) badges += `<span class="badge-tag chan">CHANCELLOR</span>`;
             
-            // Evaluates and renders exact ballot choices explicitly during the 2-second VOTE_REVEAL phase
             if (p.voteValue !== undefined && p.voteValue !== null) {
-                if (p.voteValue === true) {
-                    badges += `<span class="badge-tag" style="background:#2e7d32; color:#fff;">JA (YES)</span>`;
-                } else {
-                    badges += `<span class="badge-tag" style="background:#c62828; color:#fff;">NEIN (NO)</span>`;
-                }
+                if (p.voteValue === true) badges += `<span class="badge-tag" style="background:#2e7d32; color:#fff;">JA (YES)</span>`;
+                else badges += `<span class="badge-tag" style="background:#c62828; color:#fff;">NEIN (NO)</span>`;
             } else if(p.hasVoted && !p.isDead && !p.isDisconnected) {
                 badges += `<span class="badge-tag voted">✓ VOTED</span>`;
             }
@@ -215,7 +210,7 @@ function renderControls(state) {
     let fallbackStatusText = "Waiting for other players to resolve current actions...";
 
     if (myPlayerObj && myPlayerObj.isDisconnected) {
-        passivePromptText.textContent = "Attempting link restoration connection sync diagnostics...";
+        passivePromptText.textContent = "Attempting link restoration diagnostics...";
         actionModalOverlay.classList.add('hidden');
         return;
     }
@@ -259,7 +254,6 @@ function renderControls(state) {
             });
         }
     } 
-    // Passive update display handler during the 2-second show period
     else if (state.phase === 'VOTE_REVEAL') {
         fallbackStatusText = "ELECTION BALLOT SUMMARY: Revealing votes cast by all players...";
     }
@@ -296,10 +290,54 @@ function renderControls(state) {
                 };
                 ctrl.appendChild(div);
             });
+
+            // Rule Modification: Render 'Request Veto' option explicitly if 5 fascist policies are set
+            if (state.fascistPolicies === 5) {
+                const vetoBtn = document.createElement('button');
+                vetoBtn.className = "btn control-btn animate-pop";
+                vetoBtn.style.background = "linear-gradient(to bottom, #ff3d00, #c62828)";
+                vetoBtn.style.display = "block";
+                vetoBtn.style.margin = "15px auto 0";
+                vetoBtn.textContent = "Call For Agenda Veto ✋";
+                vetoBtn.onclick = () => {
+                    socket.emit('requestVeto', currentRoomCode);
+                    actionModalOverlay.classList.add('hidden');
+                };
+                ctrl.appendChild(vetoBtn);
+            }
         } else {
             fallbackStatusText = "Legislative Phase: The Chancellor is selecting a card to enact into law...";
         }
     } 
+    // Veto Action Phase Overlay Renderer Loop
+    else if (state.phase === 'VETO_REQUEST') {
+        if (amIPresident) {
+            isMyActionTurn = true;
+            prompt.textContent = "VETO CALL TRIGGERED: The Chancellor wishes to completely veto this legislative agenda. Do you agree to burn both drawn cards?";
+            
+            const acceptBtn = document.createElement('button');
+            acceptBtn.className = "btn success-btn animate-pop";
+            acceptBtn.textContent = "Agree (Burn Agenda)";
+            acceptBtn.onclick = () => {
+                socket.emit('respondToVeto', { roomCode: currentRoomCode, accept: true });
+                actionModalOverlay.classList.add('hidden');
+            };
+
+            const denyBtn = document.createElement('button');
+            denyBtn.className = "btn wood-btn primary animate-pop";
+            denyBtn.textContent = "Deny (Force Law)";
+            denyBtn.onclick = () => {
+                socket.emit('respondToVeto', { roomCode: currentRoomCode, accept: false });
+                actionModalOverlay.classList.add('hidden');
+            };
+
+            ctrl.appendChild(acceptBtn);
+            ctrl.appendChild(denyBtn);
+        } else {
+            const currentChanName = state.players.find(p => p.isChancellor)?.name || "Chancellor";
+            fallbackStatusText = `Veto Procedure: ${currentChanName} requested an agenda veto. Waiting for President's agreement response...`;
+        }
+    }
     else if (state.phase === 'PRESIDENTIAL_POWER_PEEK') {
         if (amIPresident) {
             isMyActionTurn = true;
