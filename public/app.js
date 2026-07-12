@@ -10,7 +10,6 @@ const btnRemoveBot = document.getElementById('btn-remove-bot');
 const btnStart = document.getElementById('btn-start');
 const chkBozbey = document.getElementById('chk-bozbey');
 
-// Modal Elements Selector Node References
 const actionModalOverlay = document.getElementById('action-modal-overlay');
 const passivePromptText = document.getElementById('passive-prompt-text');
 
@@ -118,9 +117,20 @@ socket.on('gameStateUpdate', (state) => {
             let badges = '';
             if(p.isPresident) badges += `<span class="badge-tag pres">PRESIDENT</span>`;
             if(p.isChancellor) badges += `<span class="badge-tag chan">CHANCELLOR</span>`;
-            if(p.hasVoted && !p.isDead && !p.isDisconnected) badges += `<span class="badge-tag voted">✓ VOTED</span>`;
-            if(p.isDead) badges += `<span class="badge-tag" style="background:#000;">☠ DEAD</span>`;
-            if(p.isDisconnected && !p.isDead) badges += `<span class="badge-tag offline">🔌 OFFLINE</span>`;
+            
+            // Evaluates and renders exact ballot choices explicitly during the 2-second VOTE_REVEAL phase
+            if (p.voteValue !== undefined && p.voteValue !== null) {
+                if (p.voteValue === true) {
+                    badges += `<span class="badge-tag" style="background:#2e7d32; color:#fff;">JA (YES)</span>`;
+                } else {
+                    badges += `<span class="badge-tag" style="background:#c62828; color:#fff;">NEIN (NO)</span>`;
+                }
+            } else if(p.hasVoted && !p.isDead && !p.isDisconnected) {
+                badges += `<span class="badge-tag voted">✓ VOTED</span>`;
+            }
+
+            if (p.isDead) badges += `<span class="badge-tag" style="background:#000;">☠ DEAD</span>`;
+            if (p.isDisconnected && !p.isDead) badges += `<span class="badge-tag offline">🔌 OFFLINE</span>`;
             
             if (p.revealedRole && !p.isDead) {
                 if (p.revealedRole === 'Fascist') badges += `<span class="badge-tag team-fascist">FASCIST</span>`;
@@ -137,7 +147,7 @@ socket.on('gameStateUpdate', (state) => {
         renderControls(state);
     } 
     else if (state.status === 'FINISHED') {
-        actionModalOverlay.classList.add('hidden'); // Ensure popups clear on exit
+        actionModalOverlay.classList.add('hidden'); 
         gameScreen.classList.add('hidden');
         endScreen.classList.remove('hidden');
         document.getElementById('victory-title').textContent = "MATCH CONCLUDED!";
@@ -249,6 +259,10 @@ function renderControls(state) {
             });
         }
     } 
+    // Passive update display handler during the 2-second show period
+    else if (state.phase === 'VOTE_REVEAL') {
+        fallbackStatusText = "ELECTION BALLOT SUMMARY: Revealing votes cast by all players...";
+    }
     else if (state.phase === 'LEGISLATIVE_PRESIDENT') {
         if (amIPresident) {
             isMyActionTurn = true;
@@ -374,7 +388,6 @@ function renderControls(state) {
         }
     }
 
-    // Toggle Modal Display State Machine depending on active turns context
     if (isMyActionTurn) {
         actionModalOverlay.classList.remove('hidden');
         passivePromptText.textContent = "Your turn! Please make a selection in the overlay popup window.";

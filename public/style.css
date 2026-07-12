@@ -26,6 +26,7 @@ body {
 
 .hidden { display: none !important; }
 
+/* CSS Animations */
 .animate-fade { animation: fadeIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
 .animate-pop { animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
 
@@ -43,19 +44,19 @@ body {
     100% { border-color: #d84315; box-shadow: 0 0 5px #d84315; }
 }
 @keyframes targetDangerPulse {
-    0% { border-color: #ff3d00; background: rgba(255, 61, 0, 0.1); }
-    50% { border-color: #ff9100; background: rgba(255, 61, 0, 0.3); }
-    100% { border-color: #ff3d00; background: rgba(255, 61, 0, 0.1); }
+    0% { border-color: #ff3d00; background: rgba(255, 61, 0, 0.15); box-shadow: inset 0 0 10px rgba(255,61,0,0.4); }
+    50% { border-color: #ff9100; background: rgba(255, 61, 0, 0.3); box-shadow: inset 0 0 18px rgba(255,61,0,0.6), 0 0 8px rgba(255,61,0,0.3); }
+    100% { border-color: #ff3d00; background: rgba(255, 61, 0, 0.15); box-shadow: inset 0 0 10px rgba(255,61,0,0.4); }
 }
 @keyframes electionPurplePulse {
-    0% { border-color: #9c27b0; background: rgba(156, 39, 176, 0.05); }
-    50% { border-color: #ba68c8; background: rgba(156, 39, 176, 0.25); }
-    100% { border-color: #9c27b0; background: rgba(156, 39, 176, 0.05); }
+    0% { border-color: #9c27b0; background: rgba(156, 39, 176, 0.15); box-shadow: inset 0 0 10px rgba(156,39,176,0.4); }
+    50% { border-color: #ba68c8; background: rgba(156, 39, 176, 0.3); box-shadow: inset 0 0 18px rgba(156,39,176,0.6), 0 0 8px rgba(156,39,176,0.3); }
+    100% { border-color: #9c27b0; background: rgba(156, 39, 176, 0.15); box-shadow: inset 0 0 10px rgba(156,39,176,0.4); }
 }
-@keyframes miniTrackerPulse {
-    0% { background: #ff9100; transform: scale(1); }
-    50% { background: #ff3d00; transform: scale(1.15); box-shadow: 0 0 8px #ff3d00; }
-    100% { background: #ff9100; transform: scale(1); }
+@keyframes trackerActivePulse {
+    0% { background: #ffcc00; box-shadow: 0 0 2px #ffcc00; }
+    50% { background: #ff6600; box-shadow: 0 0 15px #ff6600; }
+    100% { background: #ffcc00; box-shadow: 0 0 2px #ffcc00; }
 }
 
 .game-logo {
@@ -126,9 +127,7 @@ input[type="text"] {
 
 .lobby-controls { display: flex; justify-content: center; gap: 15px; margin-top: 20px; flex-wrap: wrap; }
 
-/* ==========================================================================
-   SUPER COMPACT HORIZONTAL STATS BAR SYSTEM
-   ========================================================================== */
+/* Stats Bar Configuration */
 .compact-stats-bar {
     display: flex;
     justify-content: space-between;
@@ -168,16 +167,8 @@ input[type="text"] {
 .draw-node { border-left: 3px solid #ff4500; }
 .discard-node { border-left: 3px solid #78909c; }
 
-.mini-chaos-tracker {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.mini-tracker-dots {
-    display: flex;
-    gap: 6px;
-}
+.mini-chaos-tracker { display: flex; align-items: center; gap: 12px; }
+.mini-tracker-dots { display: flex; gap: 6px; }
 
 .mini-dot {
     width: 24px;
@@ -192,40 +183,80 @@ input[type="text"] {
     text-align: center;
     transition: all 0.3s ease;
 }
-
 .mini-dot.active-tracker-point {
     color: #fff;
     border-color: #fff;
     animation: miniTrackerPulse 1.5s infinite ease-in-out;
 }
+.mini-dot.mini-danger { border-color: #b71c1c; color: #b71c1c; }
+.mini-dot.mini-danger.active-tracker-point { background: #b71c1c; animation: miniTrackerPulse 0.8s infinite ease-in-out; }
 
-.mini-dot.mini-danger {
-    border-color: #b71c1c;
-    color: #b71c1c;
+/* Immersive Poker Felt Architecture */
+.board-table-felt { 
+    background: #0f2316; 
+    border: 10px solid #271410; 
+    border-radius: 14px; 
+    padding: 25px; 
+    margin: 20px 0; 
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.9); 
 }
-.mini-dot.mini-danger.active-tracker-point {
-    background: #b71c1c;
-    animation: miniTrackerPulse 0.6s infinite ease-in-out;
+.visual-board { margin-bottom: 20px; padding: 15px; border-radius: 8px; }
+.liberal-board { background: rgba(13, 71, 161, 0.2); border: 2px solid #0d47a1; }
+.fascist-board { background: rgba(183, 28, 28, 0.2); border: 2px solid #b71c1c; }
+.board-title { font-family: 'Cinzel', serif; font-size: 1.3rem; font-weight: 700; letter-spacing: 3px; margin-bottom: 15px; text-align: center; }
+
+/* ==========================================================================
+   SHORTER PREMIUM SQUARE TILE TRACK ENGINE
+   ========================================================================== */
+.track-slots { 
+    display: flex; 
+    justify-content: center; 
+    gap: 12px; 
 }
 
-/* Felt Board Workspace */
-.board-table-felt { background: #0f2316; border: 10px solid #271410; border-radius: 14px; padding: 25px; margin: 20px 0; box-shadow: inset 0 0 40px rgba(0,0,0,0.9); }
-.visual-board { margin-bottom: 25px; padding: 15px; border-radius: 8px; }
-.liberal-board { background: rgba(13, 71, 161, 0.3); border: 3px solid #0d47a1; }
-.fascist-board { background: rgba(183, 28, 28, 0.3); border: 3px solid #b71c1c; }
-.board-title { font-family: 'Cinzel', serif; font-size: 1.4rem; font-weight: 700; letter-spacing: 3px; margin-bottom: 12px; }
+.slot { 
+    width: 58px; 
+    height: 58px; /* Perfectly square aspect ratio cuts vertical height */
+    border: 2px solid #4a312a; 
+    border-radius: 6px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-size: 1.15rem; 
+    font-weight: bold; 
+    color: #795548; 
+    background: linear-gradient(135deg, #120705 0%, #1d100c 100%); 
+    box-shadow: inset 0 4px 10px rgba(0,0,0,0.8);
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
+}
 
-.track-slots { display: flex; justify-content: center; gap: 14px; }
-.slot { width: 55px; height: 80px; border: 2px dashed #6d4c41; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: bold; color: #75615c; background: rgba(0,0,0,0.15); transition: all 0.3s ease; }
-.slot.filled-Liberal { background: #1976d2; border: 2px solid #fff; color: white; transform: scale(1.05); }
-.slot.filled-Fascist { background: #d32f2f; border: 2px solid #fff; color: white; transform: scale(1.05); }
+/* Enacted Law Tiles: Rich metallic styling with inner text lighting */
+.slot.filled-Liberal { 
+    background: linear-gradient(135deg, #1e88e5 0%, #0d47a1 100%); 
+    border: 2px solid #fff; 
+    color: #ffca28; /* Gold Star */
+    font-size: 1.6rem;
+    transform: scale(1.03); 
+    box-shadow: 0 6px 12px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.4);
+    text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+}
+.slot.filled-Fascist { 
+    background: linear-gradient(135deg, #e53935 0%, #b71c1c 100%); 
+    border: 2px solid #fff; 
+    color: #ffca28; /* Gold Star */
+    font-size: 1.6rem;
+    transform: scale(1.03); 
+    box-shadow: 0 6px 12px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.4);
+    text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+}
 
-.slot.power-investigate { border-color: #ffb300; color: #ffb300; background: rgba(255, 179, 0, 0.08); }
-.slot.power-peek { border-color: #03a9f4; color: #03a9f4; background: rgba(3, 169, 244, 0.08); }
-.slot.power-election { border-color: #9c27b0; color: #9c27b0; animation: electionPurplePulse 3s infinite ease-in-out; }
-.slot.power-execution { border-color: #ff3d00; color: #ff3d00; animation: targetDangerPulse 3s infinite ease-in-out; }
+/* Graphic Supported Capabilities Slots */
+.slot.power-investigate { border-color: #ffb300; color: #ffb300; background: radial-gradient(circle, rgba(255, 179, 0, 0.15) 0%, rgba(18,7,5,0.6) 100%); font-size: 1.4rem; }
+.slot.power-peek { border-color: #03a9f4; color: #03a9f4; background: radial-gradient(circle, rgba(3, 169, 244, 0.15) 0%, rgba(18,7,5,0.6) 100%); font-size: 1.4rem; }
+.slot.power-election { border-color: #e040fb; color: #e040fb; background: radial-gradient(circle, rgba(224, 64, 251, 0.15) 0%, rgba(18,7,5,0.6) 100%); font-size: 1.4rem; animation: electionPurplePulse 3s infinite ease-in-out; }
+.slot.power-execution { border-color: #ff3d00; color: #ff3d00; background: radial-gradient(circle, rgba(255, 61, 0, 0.15) 0%, rgba(18,7,5,0.6) 100%); font-size: 1.4rem; animation: targetDangerPulse 3s infinite ease-in-out; }
 
-/* Dynamic Decision Modal Overlay Framework */
+/* Decision Overlays */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -238,7 +269,6 @@ input[type="text"] {
     justify-content: center;
     align-items: center;
     z-index: 9999;
-    transition: opacity 0.3s ease;
 }
 
 .modal-card-box {
@@ -260,40 +290,18 @@ input[type="text"] {
     padding: 10px;
     text-align: center;
     text-transform: uppercase;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.5);
 }
 
-.modal-inner-content {
-    padding: 25px 20px;
-    text-align: center;
-}
-
-#action-prompt {
-    font-size: 1.3rem;
-    color: #ffb300;
-    margin-bottom: 20px;
-    line-height: 1.5;
-}
+.modal-inner-content { padding: 25px 20px; text-align: center; }
+#action-prompt { font-size: 1.3rem; color: #ffb300; margin-bottom: 20px; line-height: 1.5; }
 
 .policy-card { display: inline-block; width: 90px; height: 135px; margin: 12px; border-radius: 10px; line-height: 135px; font-size: 1.3rem; font-weight: bold; color: white; cursor: pointer; box-shadow: 0 8px 16px rgba(0,0,0,0.6); border: 4px solid #fff; text-align: center;}
 .policy-card:hover { transform: translateY(-10px) scale(1.05); }
 .card-Liberal { background: radial-gradient(circle, #2196f3 0%, #0d47a1 100%); }
 .card-Fascist { background: radial-gradient(circle, #f44336 0%, #b71c1c 100%); }
 
-/* Passive Game Prompt Status Display Box */
-.passive-status-panel {
-    background: #23120f;
-    border-left: 5px solid #2196f3;
-    padding: 12px 20px;
-    border-radius: 6px;
-    margin-bottom: 20px;
-    text-align: left;
-}
-#passive-prompt-text {
-    font-size: 1.1rem;
-    color: #b0bec5;
-    margin: 0;
-}
+.passive-status-panel { background: #23120f; border-left: 5px solid #2196f3; padding: 12px 20px; border-radius: 6px; margin-bottom: 20px; text-align: left; }
+#passive-prompt-text { font-size: 1.1rem; color: #b0bec5; margin: 0; }
 
 .seating-chart { background: rgba(15, 8, 7, 0.7); padding: 20px; border-radius: 12px; border: 2px solid #57342c; }
 .seating-chart h3 { border-bottom: 2px solid #57342c; padding-bottom: 8px; margin-bottom: 15px; text-align: center; color: #cca59e; }
@@ -323,16 +331,18 @@ input[type="text"] {
 .custom-chk-text { color: #b39ddb; letter-spacing: 1px; text-shadow: 1px 1px 2px #000; }
 .checkbox-label input[type="checkbox"]:disabled + .custom-chk-text { color: #5d4d57; cursor: not-allowed; }
 
-/* Responsive Phone Screen Formats Override */
+/* Responsive Mobile Rules overrides */
 @media (max-width: 600px) {
-    .compact-stats-bar {
-        padding: 6px 12px;
-    }
+    .compact-stats-bar { padding: 6px 12px; }
     .stat-label { font-size: 0.7rem; }
     .stat-val { font-size: 1.1rem; }
-    .mini-dot { width: 20px; height: 24px; font-size: 0.7rem; line-height: 20px; }
+    .mini-dot { width: 20px; height: 20px; font-size: 0.65rem; line-height: 18px; }
     .track-slots { gap: 6px; }
-    .slot { width: 38px; height: 60px; font-size: 1rem; }
+    
+    /* Responsive Square layout parameters */
+    .slot { width: 42px; height: 42px; font-size: 0.95rem; border-radius: 4px; }
+    .slot.filled-Liberal, .slot.filled-Fascist { font-size: 1.2rem; }
+    
     .policy-card { width: 70px; height: 105px; line-height: 105px; font-size: 1rem; }
     .btn { padding: 12px 20px; font-size: 1rem; width: 100%; }
     .lobby-controls { flex-direction: column; }

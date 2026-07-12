@@ -113,6 +113,7 @@ function getSanitizedState(room, playerId) {
                 isPresident: room.players[room.presidentIdx]?.id === p.id,
                 isChancellor: room.players[room.chancellorIdx]?.id === p.id,
                 hasVoted: room.votes[p.id] !== undefined,
+                voteValue: room.phase === 'VOTE_REVEAL' ? room.votes[p.id] : null, // Exposes vote choices securely during disclosure
                 isDead: p.isDead,
                 isDisconnected: p.isDisconnected,
                 isEligibleChancellor: eligibleChancellor,
@@ -278,43 +279,53 @@ function evaluateVotes(roomCode) {
     const activeVoters = room.players.filter(p => !p.isDead && !p.isDisconnected);
     if (Object.keys(room.votes).length !== activeVoters.length) return;
 
-    const jaCount = Object.values(room.votes).filter(v => v === true).length;
-    if (jaCount > activeVoters.length / 2) {
-        if (room.players[room.chancellorIdx].role === 'Hitler' && room.fascistPolicies >= 3) {
-            room.status = 'FINISHED';
-            room.winner = 'Fascists (Hitler elected Chancellor)';
-            broadcastState(roomCode);
-            return;
-        }
-
-        room.lastElectedPresidentId = room.players[room.presidentIdx].id;
-        room.lastElectedChancellorId = room.players[room.chancellorIdx].id;
-
-        room.phase = 'LEGISLATIVE_PRESIDENT';
-        checkAndReplenishDeck(room);
-        room.drawnCards = [room.deck.pop(), room.deck.pop(), room.deck.pop()];
-        room.electionTracker = 0;
-    } else {
-        room.electionTracker += 1;
-        room.chancellorIdx = null;
-        if (room.electionTracker >= 3) {
-            if (room.deck.length < 1) {
-                const shuffledDiscard = shuffle(room.discardPile);
-                room.deck = shuffledDiscard.concat(room.deck);
-                room.discardPile = [];
-            }
-            const topPolicy = room.deck.pop();
-            if (topPolicy === 'Liberal') room.liberalPolicies++;
-            else room.fascistPolicies++;
-            room.electionTracker = 0;
-
-            room.lastElectedPresidentId = null;
-            room.lastElectedChancellorId = null;
-        }
-        advanceTurn(room);
-    }
-    room.votes = {};
+    // Shift to a temporary disclosure phase
+    room.phase = 'VOTE_REVEAL';
     broadcastState(roomCode);
+
+    // Freeze game execution loop for exactly 2 seconds (2000 milliseconds)
+    setTimeout(() => {
+        const currentRoom = rooms[roomCode.toUpperCase()];
+        if (!currentRoom) return;
+
+        const jaCount = Object.values(currentRoom.votes).filter(v => v === true).length;
+        if (jaCount > activeVoters.length / 2) {
+            if (currentRoom.players[currentRoom.chancellorIdx].role === 'Hitler' && currentRoom.fascistPolicies >= 3) {
+                currentRoom.status = 'FINISHED';
+                currentRoom.winner = 'Fascists (Hitler elected Chancellor)';
+                broadcastState(roomCode);
+                return;
+            }
+
+            currentRoom.lastElectedPresidentId = currentRoom.players[currentRoom.presidentIdx].id;
+            currentRoom.lastElectedChancellorId = currentRoom.players[currentRoom.chancellorIdx].id;
+
+            currentRoom.phase = 'LEGISLATIVE_PRESIDENT';
+            checkAndReplenishDeck(currentRoom);
+            currentRoom.drawnCards = [currentRoom.deck.pop(), currentRoom.deck.pop(), currentRoom.deck.pop()];
+            currentRoom.electionTracker = 0;
+        } else {
+            currentRoom.electionTracker += 1;
+            currentRoom.chancellorIdx = null;
+            if (currentRoom.electionTracker >= 3) {
+                if (currentRoom.deck.length < 1) {
+                    const shuffledDiscard = shuffle(currentRoom.discardPile);
+                    currentRoom.deck = shuffledDiscard.concat(currentRoom.deck);
+                    currentRoom.discardPile = [];
+                }
+                const topPolicy = currentRoom.deck.pop();
+                if (topPolicy === 'Liberal') currentRoom.liberalPolicies++;
+                else currentRoom.fascistPolicies++;
+                currentRoom.electionTracker = 0;
+
+                currentRoom.lastElectedPresidentId = null;
+                currentRoom.lastElectedChancellorId = null;
+            }
+            advanceTurn(currentRoom);
+        }
+        currentRoom.votes = {}; // Clear ballot history safely after reveal window closes
+        broadcastState(roomCode);
+    }, 2000);
 }
 
 function executeEnact(roomCode, enactIndex) {
@@ -411,7 +422,6 @@ io.on('connection', (socket) => {
         broadcastState(code);
     });
 
-    // Authoritative Kick/Remove Bot Event Listener Loop
     socket.on('removeBot', (roomCode) => {
         if (!roomCode) return;
         const code = roomCode.toUpperCase();
@@ -424,10 +434,9 @@ io.on('connection', (socket) => {
         }
         if (room.status !== 'LOBBY') return;
 
-        // Find the index of the last bot added into the room array structure
         const lastBotIdx = room.players.map(p => p.isBot).lastIndexOf(true);
         if (lastBotIdx !== -1) {
-            room.players.splice(lastBotIdx, 1); // Kick the bot out of the lobby
+            room.players.splice(lastBotIdx, 1);
             broadcastState(code);
         }
     });
@@ -607,6 +616,4 @@ io.on('connection', (socket) => {
     });
 });
 
-// Change this line at the very bottom of server.js
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Secret Hitler running on port ${PORT}`));
+server.listen(3000, () => console.log('Server running on port 3000'));
