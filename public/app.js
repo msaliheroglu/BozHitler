@@ -1,7 +1,6 @@
 const socket = io();
 let currentRoomCode = null, myId = null;
 
-// Local tracking flags to trigger animations and initial reveals
 let localRoleBriefingSeen = false;
 let recordedLiberalLaws = 0;
 let recordedFascistLaws = 0;
@@ -18,12 +17,10 @@ const chkBozbey = document.getElementById('chk-bozbey');
 const actionModalOverlay = document.getElementById('action-modal-overlay');
 const passivePromptText = document.getElementById('passive-prompt-text');
 
-// 1. New Modal Element Triggers
 const roleRevealOverlay = document.getElementById('role-reveal-overlay');
 const revealCardVisual = document.getElementById('reveal-card-visual');
 const btnCloseRoleReveal = document.getElementById('btn-close-role-reveal');
 
-// 3. Animation Elements Selector References
 const policyAnimationOverlay = document.getElementById('policy-animation-overlay');
 const flashPolicyTitle = document.getElementById('flash-policy-title');
 
@@ -63,30 +60,45 @@ chkBozbey.onchange = () => {
     }
 };
 
-// 1. Closes initialization pop-up window cleanly
+roleRevealOverlay.onclick = (e) => {
+    // Blocks modal closure click leaking if clicking the outer transparent box area
+    if (e.target === roleRevealOverlay) e.stopPropagation();
+};
+
+actionModalOverlay.onclick = (e) => {
+    if (e.target === actionModalOverlay) e.stopPropagation();
+};
+
 btnCloseRoleReveal.onclick = () => {
     roleRevealOverlay.classList.add('hidden');
 };
 
+// Central helper syncing room codes globally across layout views
+function syncRoomCodeText(code) {
+    document.querySelectorAll('.display-code-global').forEach(el => {
+        el.textContent = code;
+    });
+}
+
 socket.on('roomCreated', (code) => {
     currentRoomCode = code;
-    document.getElementById('display-code').textContent = code;
+    syncRoomCodeText(code);
     setupScreen.classList.add('hidden');
     lobbyScreen.classList.remove('hidden');
 });
 
 socket.on('gameStateUpdate', (state) => {
     currentRoomCode = state.roomCode;
+    syncRoomCodeText(state.roomCode); // Requirement 1: Keep active codes updated
     
     if (state.status === 'LOBBY') {
-        // Reset tracking states cleanly upon returning to lobby
         localRoleBriefingSeen = false;
         recordedLiberalLaws = 0;
         recordedFascistLaws = 0;
 
         setupScreen.classList.add('hidden');
-        lobbyScreen.classList.remove('hidden');
         gameScreen.classList.add('hidden');
+        lobbyScreen.classList.remove('hidden');
         document.getElementById('lobby-count').textContent = state.players.length;
         
         chkBozbey.checked = state.bozbeyMode;
@@ -115,6 +127,8 @@ socket.on('gameStateUpdate', (state) => {
         });
     } 
     else if (state.status === 'IN_PROGRESS') {
+        // Requirement 4: Explicit clean visibility toggling for reconnect sessions
+        setupScreen.classList.add('hidden'); 
         lobbyScreen.classList.add('hidden');
         gameScreen.classList.remove('hidden');
         
@@ -123,18 +137,15 @@ socket.on('gameStateUpdate', (state) => {
 
         updateChaosTracker(state.electionTracker);
 
-        // 3. Law Enactments Delta Interceptor Event Trigger Loop
         if (recordedLiberalLaws > 0 && state.liberalPolicies > recordedLiberalLaws) {
             triggerFlashOverlayAnimation('Liberal');
         }
         if (recordedFascistLaws > 0 && state.fascistPolicies > recordedFascistLaws) {
             triggerFlashOverlayAnimation('Fascist');
         }
-        // Commit fresh totals to sync memory benchmarks
         recordedLiberalLaws = state.liberalPolicies;
         recordedFascistLaws = state.fascistPolicies;
 
-        // 1. First-time Role Assignment Interception Popup Modal Generator
         if (!localRoleBriefingSeen && state.yourRole) {
             localRoleBriefingSeen = true;
             revealCardVisual.className = `reveal-identity-banner identity-${state.yourRole}`;
@@ -152,20 +163,17 @@ socket.on('gameStateUpdate', (state) => {
         renderTrack('liberal-slots-track', state.liberalPolicies, 5, 'Liberal', state.players.length);
         renderTrack('fascist-slots-track', state.fascistPolicies, 6, 'Fascist', state.players.length);
         
-        // 5. Build Grid-Based Tactile Cards instead of standard rows
         const pList = document.getElementById('game-players-list');
         pList.innerHTML = '';
         state.players.forEach(p => {
             const card = document.createElement('div');
             card.className = `player-card ${p.isDead ? 'dead-player' : ''} ${p.isDisconnected ? 'disconnected-player' : ''} ${(p.isPresident || p.isChancellor) ? 'active-gov' : ''}`;
             
-            // Name Header block
             const nameSpan = document.createElement('div');
             nameSpan.className = 'player-card-name';
             nameSpan.innerHTML = `${p.name} ${p.id === myId ? '<strong style="color:#ffca28;">(You)</strong>' : ''}`;
             card.appendChild(nameSpan);
 
-            // Badges list layer
             const badgesContainer = document.createElement('div');
             badgesContainer.className = 'player-card-badges-container';
 
@@ -177,7 +185,6 @@ socket.on('gameStateUpdate', (state) => {
             if(p.isDisconnected && !p.isDead) badgesContainer.innerHTML += `<span class="badge-tag offline">🔌 OFFLINE</span>`;
             if(p.isDead) badgesContainer.innerHTML += `<span class="badge-tag" style="background:#000; color:#fff;">☠ DECEASED</span>`;
 
-            // Teammate reveal tags integration
             if (p.revealedRole && !p.isDead) {
                 const roleTag = document.createElement('div');
                 roleTag.className = `player-card-role-block role-block-${p.revealedRole.toLowerCase()}`;
@@ -190,7 +197,6 @@ socket.on('gameStateUpdate', (state) => {
             }
             card.appendChild(badgesContainer);
 
-            // 5. Absolute positioning ballot stamps overlay loop injection during reveals
             if (state.phase === 'VOTE_REVEAL' && p.voteValue !== undefined && p.voteValue !== null) {
                 const stamp = document.createElement('div');
                 if (p.voteValue === true) {
@@ -217,7 +223,6 @@ socket.on('gameStateUpdate', (state) => {
     }
 });
 
-// 3. Invokes the full screen Law deployment banner
 function triggerFlashOverlayAnimation(factionType) {
     policyAnimationOverlay.className = `full-screen-flash-overlay flash-${factionType.toLowerCase()}-theme`;
     flashPolicyTitle.textContent = `${factionType.toUpperCase()} POLICY`;
@@ -225,7 +230,7 @@ function triggerFlashOverlayAnimation(factionType) {
 
     setTimeout(() => {
         policyAnimationOverlay.classList.add('hidden');
-    }, 2500); // Display alert for 2.5 seconds
+    }, 2500); 
 }
 
 function updateChaosTracker(failCount) {
@@ -335,7 +340,6 @@ function renderControls(state) {
     else if (state.phase === 'VOTE_REVEAL') {
         fallbackStatusText = "ELECTION BALLOT SUMMARY: Revealing votes cast by all players...";
     }
-    // 2. Multi-Step Selection-Then-Confirmation workflow handler for the President
     else if (state.phase === 'LEGISLATIVE_PRESIDENT') {
         if (amIPresident) {
             isMyActionTurn = true;
@@ -345,7 +349,6 @@ function renderControls(state) {
                 ctrl.innerHTML = '';
                 prompt.textContent = "Presidential Legislative Action: Select a policy card to DISCARD into the graveyard:";
                 
-                // Draw card choices loop
                 state.drawnCards.forEach((card, idx) => {
                     const div = document.createElement('div');
                     div.className = `policy-card card-${card} animate-pop ${chosenCardIndex === idx ? 'selected-target-card' : ''}`;
@@ -353,12 +356,11 @@ function renderControls(state) {
                     
                     div.onclick = () => {
                         chosenCardIndex = idx;
-                        drawPresidentialCardInterface(); // Re-render state loop to display confirmation button
+                        drawPresidentialCardInterface(); 
                     };
                     ctrl.appendChild(div);
                 });
 
-                // Injects the confirmation button if a selection exists
                 if (chosenCardIndex !== null) {
                     const confirmRow = document.createElement('div');
                     confirmRow.style.width = "100%";
@@ -383,7 +385,6 @@ function renderControls(state) {
             fallbackStatusText = "Legislative Phase: The President is choosing a card to discard...";
         }
     } 
-    // 2. Multi-Step Selection-Then-Confirmation workflow handler for the Chancellor
     else if (state.phase === 'LEGISLATIVE_CHANCELLOR') {
         if (amIChancellor) {
             isMyActionTurn = true;

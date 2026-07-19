@@ -11,7 +11,7 @@
         <div id="setup-screen" class="screen main-menu animate-fade">
             <h1 class="game-logo">Secret Hitler</h1>
             <div class="menu-box">
-                <input type="text" id="username" placeholder="Enter Your Name" autocomplete="off">
+                <input type="text" id="username" placeholder="Enter Your Name" autocomplete="off" maxlength="12">
                 <button id="btn-create" class="btn wood-btn primary">Create New Lobby</button>
                 <div class="divider"><span>OR</span></div>
                 <input type="text" id="room-code" placeholder="4-Letter Code" maxlength="4">
@@ -21,7 +21,7 @@
 
         <div id="lobby-screen" class="screen hidden animate-fade">
             <div class="board-header">
-                <h2>LOBBY CODE: <span id="display-code" class="code-highlight">----</span></h2>
+                <h2>LOBBY CODE: <span class="display-code-global">----</span></h2>
             </div>
             <div class="lobby-box">
                 <div class="bozbey-rule-card animate-pop">
@@ -44,6 +44,7 @@
         <div id="game-screen" class="screen hidden animate-fade">
             <div class="game-top-bar">
                 <div id="role-badge" class="secret-role-card">Role: Unknown</div>
+                <div class="global-room-code-tag">CODE: <span class="display-code-global">----</span></div>
                 <div class="phase-display"><span id="current-phase-text">Phase: Setup</span></div>
             </div>
 

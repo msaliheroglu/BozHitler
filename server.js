@@ -10,7 +10,7 @@ const io = new Server(server);
 app.use(express.static(path.join(__dirname, 'public')));
 
 const rooms = {};
-const botNames = ["Gemini Bot Alpha", "Gemini Bot Beta", "Gemini Bot Gamma", "Gemini Bot Delta", "Gemini Bot Epsilon"];
+const botNames = ["Bot Alpha", "Bot Beta", "Bot Gamma", "Bot Delta", "Bot Epsilon"];
 
 function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
@@ -155,7 +155,8 @@ function advanceTurn(room) {
     
     do {
         room.presidentIdx = (room.presidentIdx + 1) % room.players.length;
-    } while (room.players[room.presidentIdx].isDead);
+    // Requirement 2: Dynamically skip disconnected players during selection
+    } while (room.players[room.presidentIdx].isDead || room.players[room.presidentIdx].isDisconnected);
     
     room.lastRegularPresidentIdx = room.presidentIdx;
     room.chancellorIdx = null;
@@ -213,7 +214,6 @@ function triggerBotActions(roomCode) {
         }
 
         if (room.phase === 'LEGISLATIVE_CHANCELLOR' && currentChancellor?.isBot) {
-            // AI Chancellor Veto Check
             if (room.fascistPolicies === 5 && currentChancellor.role === 'Liberal' && !room.drawnCards.includes('Liberal')) {
                 room.phase = 'VETO_REQUEST';
                 broadcastState(roomCode);
@@ -226,7 +226,6 @@ function triggerBotActions(roomCode) {
             executeEnact(roomCode, enactIndex);
         }
 
-        // AI President Veto Response Check
         if (room.phase === 'VETO_REQUEST' && currentPresident?.isBot) {
             const accept = currentPresident.role === 'Liberal' || !room.drawnCards.includes('Fascist');
             executeVetoResolution(room, accept);
@@ -265,7 +264,7 @@ function triggerBotActions(roomCode) {
                 
                 if (victim.role === 'Bozbey') {
                     room.status = 'FINISHED';
-                    room.winner = `Bozbey (${victim.name} successfully manipulated the table to get executed and won!)`;
+                    room.winner = `Bozbey (${victim.name} manipulated the table to get executed and won!)`;
                 } else if (victim.role === 'Hitler') {
                     room.status = 'FINISHED';
                     room.winner = 'Liberals (Hitler was executed!)';
@@ -288,13 +287,12 @@ function checkAndReplenishDeck(room) {
     }
 }
 
-// Dedicated function resolving the veto evaluations securely
 function executeVetoResolution(room, accept) {
     if (accept) {
         room.discardPile.push(room.drawnCards[0]);
         room.discardPile.push(room.drawnCards[1]);
         room.drawnCards = [];
-        room.electionTracker += 1; // Advances ticker failure count by 1
+        room.electionTracker += 1;
 
         if (room.electionTracker >= 3) {
             if (room.deck.length < 1) {
@@ -314,7 +312,7 @@ function executeVetoResolution(room, accept) {
         }
         advanceTurn(room);
     } else {
-        room.phase = 'LEGISLATIVE_CHANCELLOR'; // Force chancellor selection back down loop
+        room.phase = 'LEGISLATIVE_CHANCELLOR'; 
     }
 }
 
@@ -342,7 +340,6 @@ function evaluateVotes(roomCode) {
             currentRoom.lastElectedPresidentId = currentRoom.players[currentRoom.presidentIdx].id;
             currentRoom.lastElectedChancellorId = currentRoom.players[currentRoom.chancellorIdx].id;
 
-            currentRoom.phase = 'LEGISLATIVE_PREVIEW'; // Wait, let's keep name aligned
             currentRoom.phase = 'LEGISLATIVE_PRESIDENT';
             checkAndReplenishDeck(currentRoom);
             currentRoom.drawnCards = [currentRoom.deck.pop(), currentRoom.deck.pop(), currentRoom.deck.pop()];
@@ -417,12 +414,18 @@ function executeEnact(roomCode, enactIndex) {
 
 io.on('connection', (socket) => {
     socket.on('createRoom', (playerName) => {
+        // Requirement 5: Restrict user name lengths on back-end initialization hooks
+        const cleanName = typeof playerName === 'string' ? playerName.trim().substring(0, 12) : "Player";
         const roomCode = generateRoomCode();
         rooms[roomCode] = {
-            code: roomCode, status: 'LOBBY', hostId: socket.id, 
-            players: [{ id: socket.id, name: playerName, role: null, isBot: false, isDead: false, isDisconnected: false }],
+            code: roomCode, 
+            status: 'LOBBY',
+            hostId: socket.id, 
+            players: [{ id: socket.id, name: cleanName, role: null, isBot: false, isDead: false, isDisconnected: false }],
             deck: [], discardPile: [], presidentIdx: 0, lastRegularPresidentIdx: 0, chancellorIdx: null,
-            liberalPolicies: 0, fascistPolicies: 0, electionTracker: 0, phase: 'SETUP', votes: {}, drawnCards: [], winner: null, specialPresidentActive: false, lastElectedPresidentId: null, lastElectedChancellorId: null, investigations: {}, bozbeyMode: false
+            liberalPolicies: 0, fascistPolicies: 0, electionTracker: 0,
+            phase: 'SETUP', votes: {}, drawnCards: [], winner: null, specialPresidentActive: false,
+            lastElectedPresidentId: null, lastElectedChancellorId: null, investigations: {}, bozbeyMode: false
         };
         socket.join(roomCode);
         socket.emit('roomCreated', roomCode);
@@ -444,12 +447,16 @@ io.on('connection', (socket) => {
         const code = roomCode.toUpperCase();
         const room = rooms[code];
         if (!room) return socket.emit('errorMsg', 'Lobby not found.');
+        
         const dynamicHost = room.players.find(p => !p.isBot);
-        if (!dynamicHost || socket.id !== dynamicHost.id) return socket.emit('errorMsg', 'Action denied.');
-        if (room.status !== 'LOBBY' || room.players.length >= 10) return;
+        if (!dynamicHost || socket.id !== dynamicHost.id) {
+            return socket.emit('errorMsg', 'Action denied. Only the lobby host can add AI bots.');
+        }
+        if (room.status !== 'LOBBY') return;
+        if (room.players.length >= 10) return;
 
         const botId = `bot_${Math.random().toString(36).substr(2, 9)}`;
-        const name = botNames[room.players.filter(p => p.isBot).length] || `Gemini Bot ${room.players.length + 1}`;
+        const name = botNames[room.players.filter(p => p.isBot).length] || `Bot ${room.players.length + 1}`;
         room.players.push({ id: botId, name: name, role: null, isBot: true, isDead: false, isDisconnected: false });
         broadcastState(code);
     });
@@ -459,6 +466,7 @@ io.on('connection', (socket) => {
         const code = roomCode.toUpperCase();
         const room = rooms[code];
         if (!room) return;
+
         const dynamicHost = room.players.find(p => !p.isBot);
         if (!dynamicHost || socket.id !== dynamicHost.id) return;
         if (room.status !== 'LOBBY') return;
@@ -476,7 +484,10 @@ io.on('connection', (socket) => {
         const room = rooms[code];
         if (!room) return socket.emit('errorMsg', 'Lobby not found.');
 
-        const existingPlayer = room.players.find(p => p.name === playerName);
+        // Requirement 5: Limit incoming payload length
+        const cleanName = typeof playerName === 'string' ? playerName.trim().substring(0, 12) : "Player";
+
+        const existingPlayer = room.players.find(p => p.name === cleanName);
         if (room.status === 'IN_PROGRESS' && existingPlayer && existingPlayer.isDisconnected) {
             existingPlayer.id = socket.id; 
             existingPlayer.isDisconnected = false;
@@ -485,8 +496,11 @@ io.on('connection', (socket) => {
             return;
         }
 
-        if (room.status !== 'LOBBY' || room.players.length >= 10) return socket.emit('errorMsg', 'Cannot join lobby.');
-        room.players.push({ id: socket.id, name: playerName, role: null, isBot: false, isDead: false, isDisconnected: false });
+        if (room.status !== 'LOBBY' || room.players.length >= 10) {
+            return socket.emit('errorMsg', 'Cannot join lobby.');
+        }
+        
+        room.players.push({ id: socket.id, name: cleanName, role: null, isBot: false, isDead: false, isDisconnected: false });
         socket.join(code);
         broadcastState(code);
     });
@@ -535,7 +549,7 @@ io.on('connection', (socket) => {
         const room = rooms[roomCode.toUpperCase()];
         if (!room || room.phase !== 'LEGISLATIVE_CHANCELLOR') return;
         if (room.players[room.chancellorIdx].id !== socket.id) return;
-        if (room.fascistPolicies !== 5) return; // Strict lock check
+        if (room.fascistPolicies !== 5) return;
 
         room.phase = 'VETO_REQUEST';
         broadcastState(roomCode);
@@ -641,7 +655,24 @@ io.on('connection', (socket) => {
                     else delete rooms[code]; 
                 } else {
                     room.players[idx].isDisconnected = true;
-                    if (room.phase === 'VOTING') evaluateVotes(code);
+                    
+                    // Requirement 2: Automated Pass processing triggers to protect rooms against player drop-offs
+                    const currentPresident = room.players[room.presidentIdx];
+                    const currentChancellor = room.chancellorIdx !== null ? room.players[room.chancellorIdx] : null;
+
+                    if (room.phase === 'VOTING') {
+                        evaluateVotes(code);
+                    } else if (room.phase === 'NOMINATION' && currentPresident && currentPresident.id === socket.id) {
+                        advanceTurn(room);
+                    } else if (room.phase === 'LEGISLATIVE_PRESIDENT' && currentPresident && currentPresident.id === socket.id) {
+                        advanceTurn(room);
+                    } else if (room.phase === 'LEGISLATIVE_CHANCELLOR' && currentChancellor && currentChancellor.id === socket.id) {
+                        advanceTurn(room);
+                    } else if (room.phase === 'VETO_REQUEST' && ((currentPresident && currentPresident.id === socket.id) || (currentChancellor && currentChancellor.id === socket.id))) {
+                        advanceTurn(room);
+                    } else if (room.phase.startsWith('PRESIDENTIAL_POWER_') && currentPresident && currentPresident.id === socket.id) {
+                        advanceTurn(room);
+                    }
                 }
                 broadcastState(code);
                 break;
