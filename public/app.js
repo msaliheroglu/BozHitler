@@ -1,10 +1,8 @@
 const socket = io();
 let currentRoomCode = null, myId = null;
 
-// Fixed baseline initialization from 0 to null to catch the 0 -> 1 policy transition
 let recordedLiberalLaws = null;
 let recordedFascistLaws = null;
-
 let localRoleBriefingSeen = false;
 let lastSavedState = null;
 
@@ -89,7 +87,6 @@ btnCloseRoleReveal.onclick = () => {
     }
 };
 
-// Continuous display confirmation closer configuration
 btnClosePolicyFlash.onclick = () => {
     policyAnimationOverlay.classList.add('hidden');
 };
@@ -152,7 +149,6 @@ socket.on('gameStateUpdate', (state) => {
 
         updateChaosTracker(state.electionTracker);
 
-        // Fixed Check: Triggers correctly across every transition since trackers start at null
         if (recordedLiberalLaws !== null && state.liberalPolicies > recordedLiberalLaws) {
             triggerFlashOverlayAnimation('Liberal');
         }
@@ -177,9 +173,6 @@ socket.on('gameStateUpdate', (state) => {
         
         renderTrack('liberal-slots-track', state.liberalPolicies, 5, 'Liberal', state.players.length);
         renderTrack('fascist-slots-track', state.fascistPolicies, 6, 'Fascist', state.players.length);
-        
-        const myPlayerObj = state.players.find(p => p.id === myId);
-        const amIVoted = myPlayerObj?.hasVoted;
 
         const pList = document.getElementById('game-players-list');
         pList.innerHTML = '';
@@ -198,7 +191,8 @@ socket.on('gameStateUpdate', (state) => {
             if(p.isPresident) badgesContainer.innerHTML += `<span class="badge-tag pres">PRESIDENT</span>`;
             if(p.isChancellor) badgesContainer.innerHTML += `<span class="badge-tag chan">CHANCELLOR</span>`;
             
-            if (state.phase === 'VOTING' && amIVoted && !p.hasVoted && !p.isDead && !p.isDisconnected) {
+            // Fixed Bug Condition: Shows waiting label immediately to reveal who hasn't voted yet
+            if (state.phase === 'VOTING' && !p.hasVoted && !p.isDead && !p.isDisconnected) {
                 badgesContainer.innerHTML += `<span class="badge-tag waiting-vote">⏳ WAITING</span>`;
             } else if(p.hasVoted && state.phase !== 'VOTE_REVEAL' && !p.isDead && !p.isDisconnected) {
                 badgesContainer.innerHTML += `<span class="badge-tag voted">✓ VOTED</span>`;
@@ -253,7 +247,6 @@ function triggerFlashOverlayAnimation(factionType) {
     policyAnimationOverlay.className = `full-screen-flash-overlay flash-${factionType.toLowerCase()}-theme`;
     flashPolicyTitle.textContent = `${factionType.toUpperCase()} POLICY`;
     policyAnimationOverlay.classList.remove('hidden');
-    // Removed the automated code close timer block so user clicks are mandatory
 }
 
 function updateChaosTracker(failCount) {
@@ -352,12 +345,9 @@ function renderControls(state) {
             fallbackStatusText = "You are deceased. Watching the election process unfold...";
         } else {
             isMyActionTurn = true;
-            
-            // Extracts the active nominating President's profile details 
             const currentPresObj = state.players.find(p => p.isPresident);
             const currentPresName = currentPresObj ? currentPresObj.name : "The President";
             
-            // Updates layout display with nomination context details
             prompt.textContent = `President ${currentPresName} nominated "${state.currentNominee}" as Chancellor. Cast your Government Vote:`;
             
             ['Ja', 'Nein'].forEach(v => {

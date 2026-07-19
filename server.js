@@ -419,7 +419,7 @@ io.on('connection', (socket) => {
             code: roomCode, 
             status: 'LOBBY',
             hostId: socket.id, 
-            players: [{ id: socket.id, name: cleanName, role: null, isBot: false, isDead: false, isDisconnected: false }],
+            players: [{ id: socket.id, name: playerName, role: null, isBot: false, isDead: false, isDisconnected: false }],
             deck: [], discardPile: [], presidentIdx: 0, lastRegularPresidentIdx: 0, chancellorIdx: null,
             liberalPolicies: 0, fascistPolicies: 0, electionTracker: 0,
             phase: 'SETUP', votes: {}, drawnCards: [], winner: null, specialPresidentActive: false,
@@ -450,7 +450,8 @@ io.on('connection', (socket) => {
         if (!dynamicHost || socket.id !== dynamicHost.id) {
             return socket.emit('errorMsg', 'Action denied. Only the lobby host can add AI bots.');
         }
-        if (room.status !== 'LOBBY' || room.players.length >= 10) return;
+        if (room.status !== 'LOBBY') return;
+        if (room.players.length >= 10) return;
 
         const botId = `bot_${Math.random().toString(36).substr(2, 9)}`;
         const name = botNames[room.players.filter(p => p.isBot).length] || `Bot ${room.players.length + 1}`;
@@ -475,7 +476,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Requirement 2: Clean parameters rollback engine preserving active bot structures
     socket.on('returnToLobby', (roomCode) => {
         if (!roomCode) return;
         const room = rooms[roomCode.toUpperCase()];
@@ -498,6 +498,10 @@ io.on('connection', (socket) => {
         room.lastElectedChancellorId = null;
         room.investigations = {};
         room.specialPresidentActive = false;
+        
+        // Fixed: Explicitly clear the discard pile array and deck array on parameters fallback reset
+        room.discardPile = [];
+        room.deck = [];
 
         room.players.forEach(p => {
             p.role = null;
@@ -570,27 +574,6 @@ io.on('connection', (socket) => {
         if (!room || room.phase !== 'VOTING') return;
         room.votes[socket.id] = vote;
         evaluateVotes(roomCode);
-    });
-
-    socket.on('requestVeto', (roomCode) => {
-        if (!roomCode) return;
-        const room = rooms[roomCode.toUpperCase()];
-        if (!room || room.phase !== 'LEGISLATIVE_CHANCELLOR') return;
-        if (room.players[room.chancellorIdx].id !== socket.id) return;
-        if (room.fascistPolicies !== 5) return;
-
-        room.phase = 'VETO_REQUEST';
-        broadcastState(roomCode);
-    });
-
-    socket.on('respondToVeto', ({ roomCode, accept }) => {
-        if (!roomCode) return;
-        const room = rooms[roomCode.toUpperCase()];
-        if (!room || room.phase !== 'VETO_REQUEST') return;
-        if (room.players[room.presidentIdx].id !== socket.id) return;
-
-        executeVetoResolution(room, accept);
-        broadcastState(roomCode);
     });
 
     socket.on('presidentDiscard', ({ roomCode, keepIndex1, keepIndex2 }) => {
@@ -683,23 +666,7 @@ io.on('connection', (socket) => {
                     else delete rooms[code]; 
                 } else {
                     room.players[idx].isDisconnected = true;
-                    
-                    const currentPresident = room.players[room.presidentIdx];
-                    const currentChancellor = room.chancellorIdx !== null ? room.players[room.chancellorIdx] : null;
-
-                    if (room.phase === 'VOTING') {
-                        evaluateVotes(code);
-                    } else if (room.phase === 'NOMINATION' && currentPresident && currentPresident.id === socket.id) {
-                        advanceTurn(room);
-                    } else if (room.phase === 'LEGISLATIVE_PRESIDENT' && currentPresident && currentPresident.id === socket.id) {
-                        advanceTurn(room);
-                    } else if (room.phase === 'LEGISLATIVE_CHANCELLOR' && currentChancellor && currentChancellor.id === socket.id) {
-                        advanceTurn(room);
-                    } else if (room.phase === 'VETO_REQUEST' && ((currentPresident && currentPresident.id === socket.id) || (currentChancellor && currentChancellor.id === socket.id))) {
-                        advanceTurn(room);
-                    } else if (room.phase.startsWith('PRESIDENTIAL_POWER_') && currentPresident && currentPresident.id === socket.id) {
-                        advanceTurn(room);
-                    }
+                    if (room.phase === 'VOTING') evaluateVotes(code);
                 }
                 broadcastState(code);
                 break;
