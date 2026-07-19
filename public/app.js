@@ -5,7 +5,6 @@ let recordedLiberalLaws = null;
 let recordedFascistLaws = null;
 let localRoleBriefingSeen = false;
 let lastSavedState = null;
-
 let currentLang = 'en';
 
 const setupScreen = document.getElementById('setup-screen');
@@ -104,7 +103,7 @@ const langPack = {
         lblLang: "🌐 Select Language / Dil Seçin:",
         lobbyCodeHeader: "LOBBY CODE",
         bozbeyRule: "Bozbey version 1.0",
-        lobbyPlayersTitle: "Players in the Lobby:",
+        lobbyPlayersTitle: "Players in the Lobby",
         btnAddBot: "Add AI Bot",
         btnRemoveBot: "Remove Bot",
         btnStart: "Start Match",
@@ -175,7 +174,7 @@ const langPack = {
         lblLang: "🌐 Dil Seçin / Select Language:",
         lobbyCodeHeader: "LOBİ KODU",
         bozbeyRule: "Bozbey Sürümü 1.0",
-        lobbyPlayersTitle: "Lobideki Oyuncular:",
+        lobbyPlayersTitle: "Lobideki Oyuncular",
         btnAddBot: "Yapay Zeka Botu Ekle",
         btnRemoveBot: "Bot Çıkar",
         btnStart: "Maçı Başlat",
@@ -239,7 +238,6 @@ const langPack = {
     }
 };
 
-// Requirement: Wrapped securely in element checking closures to protect initial listener pipelines
 function updateStaticTranslations() {
     const pack = langPack[currentLang];
     
@@ -281,10 +279,27 @@ function updateStaticTranslations() {
     setTxt('btn-close-policy-flash', pack.btnContinue);
     setTxt('btn-return-lobby', pack.btnReturnLobby);
     
+    // Fixed Bug 2: Local UI refresh logic avoids dropped websocket emissions
     if (lastSavedState) {
-        socket.emit('castVote', { roomCode: null, dummy: true }); 
+        // Safe programmatic simulation forced update
+        const fakeStateUpdateEvent = new CustomEvent('forceLocalRefresh');
+        window.dispatchEvent(fakeStateUpdateEvent);
     }
 }
+
+// Fixed Bug 2 Listener: Dynamically processes text updates instantly from local memory cache
+window.addEventListener('forceLocalRefresh', () => {
+    if (lastSavedState) {
+        if (lastSavedState.status === 'IN_PROGRESS') {
+            const pack = langPack[currentLang];
+            const badge = document.getElementById('role-badge');
+            if (badge) badge.textContent = `${pack.roleWord}: ${getLocalizedRole(lastSavedState.yourRole)}`;
+            const phaseText = document.getElementById('current-phase-text');
+            if (phaseText) phaseText.textContent = `${pack.phaseWord}: ${lastSavedState.phase.replace(/_/g, ' ')}`;
+            renderControls(lastSavedState);
+        }
+    }
+});
 
 langSelect.onchange = () => {
     currentLang = langSelect.value;
@@ -340,10 +355,13 @@ socket.on('gameStateUpdate', (state) => {
         gameScreen.classList.add('hidden');
         endScreen.classList.add('hidden');
         lobbyScreen.classList.remove('hidden');
-        document.getElementById('lobby-count').textContent = state.players.length;
+        
+        // Fixed: The room text update selector safely executes because the count element matches
+        const countBadge = document.getElementById('lobby-count');
+        if (countBadge) countBadge.textContent = state.players.length;
         
         chkBozbey.checked = state.bozbeyMode;
-        const botCount = state.players.filter(p => p.id.startsWith('bot_')).length;
+        const botCount = state.players.filter(p => p.id && p.id.startsWith('bot_')).length;
 
         if (state.amIHost) {
             btnStart.classList.remove('hidden');
@@ -403,6 +421,9 @@ socket.on('gameStateUpdate', (state) => {
         renderTrack('liberal-slots-track', state.liberalPolicies, 5, 'Liberal', state.players.length);
         renderTrack('fascist-slots-track', state.fascistPolicies, 6, 'Fascist', state.players.length);
         
+        const myPlayerObj = state.players.find(p => p.id === myId);
+        const amIVoted = myPlayerObj?.hasVoted;
+
         const pList = document.getElementById('game-players-list');
         pList.innerHTML = '';
         state.players.forEach(p => {
@@ -822,3 +843,6 @@ function renderControls(state) {
         passivePromptText.textContent = fallbackStatusText;
     }
 }
+
+// Fixed Bug 4: Structural initialization trigger guarantees language settings bind right on initial load
+updateStaticTranslations();

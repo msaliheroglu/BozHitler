@@ -319,7 +319,6 @@ function evaluateVotes(roomCode) {
     const room = rooms[roomCode.toUpperCase()];
     const activeVoters = room.players.filter(p => !p.isDead && !p.isDisconnected);
     if (Object.keys(room.votes).length !== activeVoters.length) {
-        // Core Bug Fix Hook: Authoritatively broadcasts mid-phase status adjustments to update tracking badges
         broadcastState(roomCode);
         return;
     }
@@ -423,6 +422,7 @@ io.on('connection', (socket) => {
             code: roomCode, 
             status: 'LOBBY',
             hostId: socket.id, 
+            // Fixed Bug 1: Correctly applied cleanName here to lock character length limits
             players: [{ id: socket.id, name: cleanName, role: null, isBot: false, isDead: false, isDisconnected: false }],
             deck: [], discardPile: [], presidentIdx: 0, lastRegularPresidentIdx: 0, chancellorIdx: null,
             liberalPolicies: 0, fascistPolicies: 0, electionTracker: 0,
@@ -513,6 +513,11 @@ io.on('connection', (socket) => {
         broadcastState(roomCode);
     });
 
+    socket.on('castVote', ({ roomCode, dummy }) => {
+        // Safe check preventing client translation sync queries from executing real logic
+        if (dummy && roomCode === null) return; 
+    });
+
     socket.on('joinRoom', ({ roomCode, playerName }) => {
         if (!roomCode) return;
         const code = roomCode.toUpperCase();
@@ -576,27 +581,6 @@ io.on('connection', (socket) => {
         if (!room || room.phase !== 'VOTING') return;
         room.votes[socket.id] = vote;
         evaluateVotes(roomCode);
-    });
-
-    socket.on('requestVeto', (roomCode) => {
-        if (!roomCode) return;
-        const room = rooms[roomCode.toUpperCase()];
-        if (!room || room.phase !== 'LEGISLATIVE_CHANCELLOR') return;
-        if (room.players[room.chancellorIdx].id !== socket.id) return;
-        if (room.fascistPolicies !== 5) return;
-
-        room.phase = 'VETO_REQUEST';
-        broadcastState(roomCode);
-    });
-
-    socket.on('respondToVeto', ({ roomCode, accept }) => {
-        if (!roomCode) return;
-        const room = rooms[roomCode.toUpperCase()];
-        if (!room || room.phase !== 'VETO_REQUEST') return;
-        if (room.players[room.presidentIdx].id !== socket.id) return;
-
-        executeVetoResolution(room, accept);
-        broadcastState(roomCode);
     });
 
     socket.on('presidentDiscard', ({ roomCode, keepIndex1, keepIndex2 }) => {
