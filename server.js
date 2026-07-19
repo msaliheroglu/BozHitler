@@ -155,7 +155,6 @@ function advanceTurn(room) {
     
     do {
         room.presidentIdx = (room.presidentIdx + 1) % room.players.length;
-    // Requirement 2: Dynamically skip disconnected players during selection
     } while (room.players[room.presidentIdx].isDead || room.players[room.presidentIdx].isDisconnected);
     
     room.lastRegularPresidentIdx = room.presidentIdx;
@@ -414,7 +413,6 @@ function executeEnact(roomCode, enactIndex) {
 
 io.on('connection', (socket) => {
     socket.on('createRoom', (playerName) => {
-        // Requirement 5: Restrict user name lengths on back-end initialization hooks
         const cleanName = typeof playerName === 'string' ? playerName.trim().substring(0, 12) : "Player";
         const roomCode = generateRoomCode();
         rooms[roomCode] = {
@@ -452,8 +450,7 @@ io.on('connection', (socket) => {
         if (!dynamicHost || socket.id !== dynamicHost.id) {
             return socket.emit('errorMsg', 'Action denied. Only the lobby host can add AI bots.');
         }
-        if (room.status !== 'LOBBY') return;
-        if (room.players.length >= 10) return;
+        if (room.status !== 'LOBBY' || room.players.length >= 10) return;
 
         const botId = `bot_${Math.random().toString(36).substr(2, 9)}`;
         const name = botNames[room.players.filter(p => p.isBot).length] || `Bot ${room.players.length + 1}`;
@@ -478,13 +475,44 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Requirement 2: Clean parameters rollback engine preserving active bot structures
+    socket.on('returnToLobby', (roomCode) => {
+        if (!roomCode) return;
+        const room = rooms[roomCode.toUpperCase()];
+        if (!room) return;
+
+        const dynamicHost = room.players.find(p => !p.isBot);
+        if (!dynamicHost || socket.id !== dynamicHost.id) {
+            return socket.emit('errorMsg', 'Only the lobby host can return players to the lobby.');
+        }
+
+        room.status = 'LOBBY';
+        room.phase = 'SETUP';
+        room.liberalPolicies = 0;
+        room.fascistPolicies = 0;
+        room.electionTracker = 0;
+        room.votes = {};
+        room.drawnCards = [];
+        room.winner = null;
+        room.lastElectedPresidentId = null;
+        room.lastElectedChancellorId = null;
+        room.investigations = {};
+        room.specialPresidentActive = false;
+
+        room.players.forEach(p => {
+            p.role = null;
+            p.isDead = false;
+        });
+
+        broadcastState(roomCode);
+    });
+
     socket.on('joinRoom', ({ roomCode, playerName }) => {
         if (!roomCode) return;
         const code = roomCode.toUpperCase();
         const room = rooms[code];
         if (!room) return socket.emit('errorMsg', 'Lobby not found.');
 
-        // Requirement 5: Limit incoming payload length
         const cleanName = typeof playerName === 'string' ? playerName.trim().substring(0, 12) : "Player";
 
         const existingPlayer = room.players.find(p => p.name === cleanName);
@@ -656,7 +684,6 @@ io.on('connection', (socket) => {
                 } else {
                     room.players[idx].isDisconnected = true;
                     
-                    // Requirement 2: Automated Pass processing triggers to protect rooms against player drop-offs
                     const currentPresident = room.players[room.presidentIdx];
                     const currentChancellor = room.chancellorIdx !== null ? room.players[room.chancellorIdx] : null;
 

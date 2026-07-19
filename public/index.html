@@ -114,16 +114,17 @@
 
         <div id="policy-animation-overlay" class="full-screen-flash-overlay hidden">
             <div class="flash-banner-content animate-pop">
-                <div id="flash-policy-stamp" class="stamp-badge">LAW ENACTED</div>
+                <div class="stamp-badge">LAW ENACTED</div>
                 <h2 id="flash-policy-title" class="flash-title">LIBERAL POLICY</h2>
-                <p style="color:#fff; font-size:1.2rem; letter-spacing:1px; margin:0;">The country moves closer to its conclusion...</p>
+                <p style="color:#fff; font-size:1.2rem; letter-spacing:1px; margin-bottom: 20px;">The country moves closer to its conclusion...</p>
+                <button id="btn-close-policy-flash" class="btn success-btn" style="min-width: 180px; box-shadow: 0 0 15px rgba(0,0,0,0.6);">Continue</button>
             </div>
         </div>
 
         <div id="end-screen" class="screen hidden animate-fade">
             <h1 id="victory-title" class="victory-banner">Victory!</h1>
             <p id="victory-reason" class="victory-subtext"></p>
-            <button onclick="window.location.reload()" class="btn wood-btn primary">Return to Menu</button>
+            <button id="btn-return-lobby" class="btn wood-btn primary">Return to Lobby</button>
         </div>
 
         <footer class="legal-credits-attribution">

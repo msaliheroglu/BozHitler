@@ -1,9 +1,12 @@
 const socket = io();
 let currentRoomCode = null, myId = null;
 
+// Fixed baseline initialization from 0 to null to catch the 0 -> 1 policy transition
+let recordedLiberalLaws = null;
+let recordedFascistLaws = null;
+
 let localRoleBriefingSeen = false;
-let recordedLiberalLaws = 0;
-let recordedFascistLaws = 0;
+let lastSavedState = null;
 
 const setupScreen = document.getElementById('setup-screen');
 const lobbyScreen = document.getElementById('lobby-screen');
@@ -12,6 +15,7 @@ const endScreen = document.getElementById('end-screen');
 const btnAddBot = document.getElementById('btn-add-bot');
 const btnRemoveBot = document.getElementById('btn-remove-bot');
 const btnStart = document.getElementById('btn-start');
+const btnReturnLobby = document.getElementById('btn-return-lobby');
 const chkBozbey = document.getElementById('chk-bozbey');
 
 const actionModalOverlay = document.getElementById('action-modal-overlay');
@@ -23,6 +27,7 @@ const btnCloseRoleReveal = document.getElementById('btn-close-role-reveal');
 
 const policyAnimationOverlay = document.getElementById('policy-animation-overlay');
 const flashPolicyTitle = document.getElementById('flash-policy-title');
+const btnClosePolicyFlash = document.getElementById('btn-close-policy-flash');
 
 socket.on('connect', () => { myId = socket.id; });
 socket.on('errorMsg', alert);
@@ -54,6 +59,10 @@ btnRemoveBot.onclick = () => {
     if(currentRoomCode) socket.emit('removeBot', currentRoomCode);
 };
 
+btnReturnLobby.onclick = () => {
+    if(currentRoomCode) socket.emit('returnToLobby', currentRoomCode);
+};
+
 chkBozbey.onchange = () => {
     if (currentRoomCode) {
         socket.emit('toggleBozbeyMode', { roomCode: currentRoomCode, enabled: chkBozbey.checked });
@@ -61,7 +70,6 @@ chkBozbey.onchange = () => {
 };
 
 roleRevealOverlay.onclick = (e) => {
-    // Blocks modal closure click leaking if clicking the outer transparent box area
     if (e.target === roleRevealOverlay) e.stopPropagation();
 };
 
@@ -69,35 +77,42 @@ actionModalOverlay.onclick = (e) => {
     if (e.target === actionModalOverlay) e.stopPropagation();
 };
 
-btnCloseRoleReveal.onclick = () => {
-    roleRevealOverlay.classList.add('hidden');
+policyAnimationOverlay.onclick = (e) => {
+    if (e.target === policyAnimationOverlay) e.stopPropagation();
 };
 
-// Central helper syncing room codes globally across layout views
+btnCloseRoleReveal.onclick = () => {
+    localRoleBriefingSeen = true;
+    roleRevealOverlay.classList.add('hidden');
+    if (lastSavedState) {
+        renderControls(lastSavedState); 
+    }
+};
+
+// Continuous display confirmation closer configuration
+btnClosePolicyFlash.onclick = () => {
+    policyAnimationOverlay.classList.add('hidden');
+};
+
 function syncRoomCodeText(code) {
     document.querySelectorAll('.display-code-global').forEach(el => {
         el.textContent = code;
     });
 }
 
-socket.on('roomCreated', (code) => {
-    currentRoomCode = code;
-    syncRoomCodeText(code);
-    setupScreen.classList.add('hidden');
-    lobbyScreen.classList.remove('hidden');
-});
-
 socket.on('gameStateUpdate', (state) => {
     currentRoomCode = state.roomCode;
-    syncRoomCodeText(state.roomCode); // Requirement 1: Keep active codes updated
+    lastSavedState = state; 
+    syncRoomCodeText(state.roomCode); 
     
     if (state.status === 'LOBBY') {
         localRoleBriefingSeen = false;
-        recordedLiberalLaws = 0;
-        recordedFascistLaws = 0;
+        recordedLiberalLaws = null;
+        recordedFascistLaws = null;
 
         setupScreen.classList.add('hidden');
         gameScreen.classList.add('hidden');
+        endScreen.classList.add('hidden');
         lobbyScreen.classList.remove('hidden');
         document.getElementById('lobby-count').textContent = state.players.length;
         
@@ -127,9 +142,9 @@ socket.on('gameStateUpdate', (state) => {
         });
     } 
     else if (state.status === 'IN_PROGRESS') {
-        // Requirement 4: Explicit clean visibility toggling for reconnect sessions
         setupScreen.classList.add('hidden'); 
         lobbyScreen.classList.add('hidden');
+        endScreen.classList.add('hidden');
         gameScreen.classList.remove('hidden');
         
         document.getElementById('deck-count').textContent = state.deckCount;
@@ -137,17 +152,17 @@ socket.on('gameStateUpdate', (state) => {
 
         updateChaosTracker(state.electionTracker);
 
-        if (recordedLiberalLaws > 0 && state.liberalPolicies > recordedLiberalLaws) {
+        // Fixed Check: Triggers correctly across every transition since trackers start at null
+        if (recordedLiberalLaws !== null && state.liberalPolicies > recordedLiberalLaws) {
             triggerFlashOverlayAnimation('Liberal');
         }
-        if (recordedFascistLaws > 0 && state.fascistPolicies > recordedFascistLaws) {
+        if (recordedFascistLaws !== null && state.fascistPolicies > recordedFascistLaws) {
             triggerFlashOverlayAnimation('Fascist');
         }
         recordedLiberalLaws = state.liberalPolicies;
         recordedFascistLaws = state.fascistPolicies;
 
         if (!localRoleBriefingSeen && state.yourRole) {
-            localRoleBriefingSeen = true;
             revealCardVisual.className = `reveal-identity-banner identity-${state.yourRole}`;
             revealCardVisual.textContent = state.yourRole.toUpperCase();
             roleRevealOverlay.classList.remove('hidden');
@@ -163,6 +178,9 @@ socket.on('gameStateUpdate', (state) => {
         renderTrack('liberal-slots-track', state.liberalPolicies, 5, 'Liberal', state.players.length);
         renderTrack('fascist-slots-track', state.fascistPolicies, 6, 'Fascist', state.players.length);
         
+        const myPlayerObj = state.players.find(p => p.id === myId);
+        const amIVoted = myPlayerObj?.hasVoted;
+
         const pList = document.getElementById('game-players-list');
         pList.innerHTML = '';
         state.players.forEach(p => {
@@ -179,9 +197,13 @@ socket.on('gameStateUpdate', (state) => {
 
             if(p.isPresident) badgesContainer.innerHTML += `<span class="badge-tag pres">PRESIDENT</span>`;
             if(p.isChancellor) badgesContainer.innerHTML += `<span class="badge-tag chan">CHANCELLOR</span>`;
-            if(p.hasVoted && state.phase !== 'VOTE_REVEAL' && !p.isDead && !p.isDisconnected) {
+            
+            if (state.phase === 'VOTING' && amIVoted && !p.hasVoted && !p.isDead && !p.isDisconnected) {
+                badgesContainer.innerHTML += `<span class="badge-tag waiting-vote">⏳ WAITING</span>`;
+            } else if(p.hasVoted && state.phase !== 'VOTE_REVEAL' && !p.isDead && !p.isDisconnected) {
                 badgesContainer.innerHTML += `<span class="badge-tag voted">✓ VOTED</span>`;
             }
+
             if(p.isDisconnected && !p.isDead) badgesContainer.innerHTML += `<span class="badge-tag offline">🔌 OFFLINE</span>`;
             if(p.isDead) badgesContainer.innerHTML += `<span class="badge-tag" style="background:#000; color:#fff;">☠ DECEASED</span>`;
 
@@ -218,6 +240,10 @@ socket.on('gameStateUpdate', (state) => {
         actionModalOverlay.classList.add('hidden'); 
         gameScreen.classList.add('hidden');
         endScreen.classList.remove('hidden');
+        
+        if (state.amIHost) btnReturnLobby.classList.remove('hidden');
+        else btnReturnLobby.classList.add('hidden');
+
         document.getElementById('victory-title').textContent = "MATCH CONCLUDED!";
         document.getElementById('victory-reason').textContent = state.winner;
     }
@@ -227,10 +253,7 @@ function triggerFlashOverlayAnimation(factionType) {
     policyAnimationOverlay.className = `full-screen-flash-overlay flash-${factionType.toLowerCase()}-theme`;
     flashPolicyTitle.textContent = `${factionType.toUpperCase()} POLICY`;
     policyAnimationOverlay.classList.remove('hidden');
-
-    setTimeout(() => {
-        policyAnimationOverlay.classList.add('hidden');
-    }, 2500); 
+    // Removed the automated code close timer block so user clicks are mandatory
 }
 
 function updateChaosTracker(failCount) {
@@ -285,6 +308,11 @@ function renderControls(state) {
     const prompt = document.getElementById('action-prompt');
     ctrl.innerHTML = '';
     
+    if (!localRoleBriefingSeen) {
+        actionModalOverlay.classList.add('hidden');
+        return;
+    }
+
     const amIPresident = state.players.find(p => p.id === myId)?.isPresident;
     const amIChancellor = state.players.find(p => p.id === myId)?.isChancellor;
     const myPlayerObj = state.players.find(p => p.id === myId);
@@ -324,7 +352,14 @@ function renderControls(state) {
             fallbackStatusText = "You are deceased. Watching the election process unfold...";
         } else {
             isMyActionTurn = true;
-            prompt.textContent = `Cast your Government Vote: Chancellor Nominee is "${state.currentNominee}"`;
+            
+            // Extracts the active nominating President's profile details 
+            const currentPresObj = state.players.find(p => p.isPresident);
+            const currentPresName = currentPresObj ? currentPresObj.name : "The President";
+            
+            // Updates layout display with nomination context details
+            prompt.textContent = `President ${currentPresName} nominated "${state.currentNominee}" as Chancellor. Cast your Government Vote:`;
+            
             ['Ja', 'Nein'].forEach(v => {
                 const btn = document.createElement('button');
                 btn.className = v === 'Ja' ? "btn success-btn animate-pop" : "btn wood-btn primary animate-pop";
