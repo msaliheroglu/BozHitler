@@ -6,6 +6,9 @@ let recordedFascistLaws = null;
 let localRoleBriefingSeen = false;
 let lastSavedState = null;
 
+// Dynamic tracking pointer variable for current chosen dictionary language mode
+let currentLang = 'en';
+
 const setupScreen = document.getElementById('setup-screen');
 const lobbyScreen = document.getElementById('lobby-screen');
 const gameScreen = document.getElementById('game-screen');
@@ -15,6 +18,7 @@ const btnRemoveBot = document.getElementById('btn-remove-bot');
 const btnStart = document.getElementById('btn-start');
 const btnReturnLobby = document.getElementById('btn-return-lobby');
 const chkBozbey = document.getElementById('chk-bozbey');
+const langSelect = document.getElementById('lang-select');
 
 const actionModalOverlay = document.getElementById('action-modal-overlay');
 const passivePromptText = document.getElementById('passive-prompt-text');
@@ -27,80 +31,234 @@ const policyAnimationOverlay = document.getElementById('policy-animation-overlay
 const flashPolicyTitle = document.getElementById('flash-policy-title');
 const btnClosePolicyFlash = document.getElementById('btn-close-policy-flash');
 
-socket.on('connect', () => { myId = socket.id; });
-socket.on('errorMsg', alert);
-
-socket.on('investigationLoyaltyResult', (data) => {
-    alert(`INVESTIGATION REPORT:\nPlayer "${data.name}" belongs to the ${data.party} Party alignment.`);
-});
-
-document.getElementById('btn-create').onclick = () => {
-    const name = document.getElementById('username').value.trim();
-    if(name) socket.emit('createRoom', name);
-};
-
-document.getElementById('btn-join').onclick = () => {
-    const name = document.getElementById('username').value.trim();
-    const code = document.getElementById('room-code').value.trim().toUpperCase();
-    if(name && code) socket.emit('joinRoom', { roomCode: code, playerName: name });
-};
-
-btnStart.onclick = () => {
-    if(currentRoomCode) socket.emit('startGame', currentRoomCode);
-};
-
-btnAddBot.onclick = () => {
-    if(currentRoomCode) socket.emit('addBot', currentRoomCode);
-};
-
-btnRemoveBot.onclick = () => {
-    if(currentRoomCode) socket.emit('removeBot', currentRoomCode);
-};
-
-btnReturnLobby.onclick = () => {
-    if(currentRoomCode) socket.emit('returnToLobby', currentRoomCode);
-};
-
-chkBozbey.onchange = () => {
-    if (currentRoomCode) {
-        socket.emit('toggleBozbeyMode', { roomCode: currentRoomCode, enabled: chkBozbey.checked });
+// Complete Comprehensive Translation Dictionary Mapping Matrix Pack
+const langPack = {
+    en: {
+        usernamePlace: "Enter Your Name",
+        btnCreate: "Create New Lobby",
+        btnJoin: "Join Existing Lobby",
+        menuDivider: "OR",
+        roomCodePlace: "4-Letter Code",
+        lblLang: "🌐 Select Language / Dil Seçin:",
+        lobbyCodeHeader: "LOBBY CODE",
+        bozbeyRule: "Bozbey version 1.0",
+        lobbyPlayersTitle: "Players in the Lobby:",
+        btnAddBot: "Add AI Bot",
+        btnRemoveBot: "Remove Bot",
+        btnStart: "Start Match",
+        statDraw: "DRAW",
+        statChaos: "CHAOS",
+        statDiscard: "DISCARD",
+        boardLiberal: "LIBERAL POLICIES",
+        boardFascist: "FASCIST POLICIES",
+        seatingChartTitle: "Seating Chart & Live Registry",
+        revealRibbon: "CLASSIFIED BRIEFING",
+        revealTitle: "YOUR SECRET IDENTITY",
+        revealInstructions: "Keep your identity hidden from the rest of the table.",
+        btnContinueGame: "Continue to Game",
+        actionRibbon: "ACTION REQUIRED",
+        flashStamp: "LAW ENACTED",
+        flashSubtext: "The country moves closer to its conclusion...",
+        btnContinue: "Continue",
+        btnReturnLobby: "Return to Lobby",
+        badgePres: "PRESIDENT",
+        badgeChan: "CHANCELLOR",
+        badgeVoted: "✓ VOTED",
+        badgeWaiting: "⏳ WAITING",
+        badgeOffline: "🔌 OFFLINE",
+        badgeDead: "☠ DECEASED",
+        badgeYouSuffix: "(You)",
+        roleLiberal: "LIBERAL",
+        roleFascist: "FASCIST",
+        roleHitler: "HITLER",
+        roleBozbey: "BOZBEY",
+        roleWord: "Role",
+        phaseWord: "Phase",
+        waitingTurnLoop: "Waiting for turn loop initialization...",
+        yourTurnModalAlert: "Your turn! Please make a selection in the overlay popup window.",
+        nominationPresidentPrompt: "You are the President! Choose a living player to nominate as Chancellor:",
+        nominationPassivePrompt: "Nomination Phase: Waiting for {name} to propose a Chancellor...",
+        votingChoicePrompt: "President {pres} nominated \"{chan}\" as Chancellor. Cast your Government Vote:",
+        votingDeceasedPassive: "You are deceased. Watching the election process unfold...",
+        voteRevealPassive: "ELECTION BALLOT SUMMARY: Revealing votes cast by all players...",
+        legislativePresPrompt: "Presidential Legislative Action: Select a policy card to DISCARD into the graveyard:",
+        legislativePresPassive: "Legislative Phase: The President is choosing a card to discard...",
+        btnConfirmDiscard: "Confirm Discard Selection 🗑",
+        legislativeChanPrompt: "Chancellor Legislative Action: Select a policy card to ENACT into permanent law:",
+        legislativeChanPassive: "Legislative Phase: The Chancellor is selecting a card to enact into law...",
+        btnConfirmEnact: "Confirm Enact Selection 📜",
+        btnRequestVeto: "Call For Agenda Veto ✋",
+        vetoRequestPrompt: "VETO CALL TRIGGERED: The Chancellor wishes to completely veto this legislative agenda. Do you agree to burn both drawn cards?",
+        vetoRequestPassive: "Veto Procedure: {name} requested an agenda veto. Waiting for President's agreement response...",
+        btnVetoAgree: "Agree (Burn Agenda)",
+        btnVetoDeny: "Deny (Force Law)",
+        powerPeekPrompt: "EXECUTIVE POWER (POLICY PEEK): Top 3 upcoming cards from the Draw Deck:",
+        powerPeekPassive: "Executive Power: The President is inspecting the upcoming deck order...",
+        btnEndPeek: "End Policy Peek Turn",
+        powerInvestigatePrompt: "EXECUTIVE POWER: Select a living player to investigate their Party Loyalty:",
+        powerInvestigatePassive: "Executive Power: The President is currently investigating a player's loyalty card...",
+        powerElectionPrompt: "EXECUTIVE POWER: Select the next player to pass the Special Presidency to:",
+        powerElectionPassive: "Executive Power: The President is appointing a candidate to a Special Election turn...",
+        powerExecutionPrompt: "EXECUTIVE POWER: Choose a player to EXECUTE (Killing Hitler awards Liberals victory):",
+        powerExecutionPassive: "🚨 CRITICAL THREAT: The President is selecting a player for execution!",
+        victoryTitle: "MATCH CONCLUDED!",
+        detectedParty: "🔍 PARTY:"
+    },
+    tr: {
+        usernamePlace: "İsminizi Girin",
+        btnCreate: "Yeni Lobi Oluştur",
+        btnJoin: "Var Olan Lobiye Katıl",
+        menuDivider: "VEYA",
+        roomCodePlace: "4 Haneli Kod",
+        lblLang: "🌐 Dil Seçin / Select Language:",
+        lobbyCodeHeader: "LOBİ KODU",
+        bozbeyRule: "Bozbey Sürümü 1.0",
+        lobbyPlayersTitle: "Lobideki Oyuncular:",
+        btnAddBot: "Yapay Zeka Botu Ekle",
+        btnRemoveBot: "Bot Çıkar",
+        btnStart: "Maçı Başlat",
+        statDraw: "DESTE",
+        statChaos: "KAOS",
+        statDiscard: "ISKARTA",
+        boardLiberal: "LİBERAL POLİTİKALAR",
+        boardFascist: "FAŞİST POLİTİKALAR",
+        seatingChartTitle: "Oturma Düzeni & Canlı Kayıt",
+        revealRibbon: "GİZLİ BRİFİNG",
+        revealTitle: "GİZLİ KİMLİĞİNİZ",
+        revealInstructions: "Kimliğinizi masanın geri kalanından gizli tutun.",
+        btnContinueGame: "Oyuna Devam Et",
+        actionRibbon: "EYLEM GEREKLİ",
+        flashStamp: "YASA YÜRÜRLÜKTE",
+        flashSubtext: "Ülke kaçınılmaz sona doğru yaklaşıyor...",
+        btnContinue: "Devam Et",
+        btnReturnLobby: "Lobiye Dön",
+        badgePres: "CUMHURBAŞKANI",
+        badgeChan: "ŞANSÖLYE",
+        badgeVoted: "✓ OYLADI",
+        badgeWaiting: "⏳ BEKLİYOR",
+        badgeOffline: "🔌 ÇEVRİMDİŞİ",
+        badgeDead: "☠ ELENDİ",
+        badgeYouSuffix: "(Sen)",
+        roleLiberal: "LİBERAL",
+        roleFascist: "FAŞİST",
+        roleHitler: "HITLER",
+        roleBozbey: "BOZBEY",
+        roleWord: "Rol",
+        phaseWord: "Evre",
+        waitingTurnLoop: "Tur döngüsünün başlaması bekleniyor...",
+        yourTurnModalAlert: "Senin sıran! Lütfen açılır pencereden bir seçim yap.",
+        nominationPresidentPrompt: "Cumhurbaşkanısın! Şansölye olarak atamak için yaşayan bir oyuncu seç:",
+        nominationPassivePrompt: "Adaylık Evresi: {name} isimli Cumhurbaşkanının Şansölye önermesi bekleniyor...",
+        votingChoicePrompt: "Cumhurbaşkanı {pres}, \"{chan}\" oyuncusunu Şansölye adayı gösterdi. Hükümet için oy kullanın:",
+        votingDeceasedPassive: "Öldün. Seçim sürecini izliyorsun...",
+        voteRevealPassive: "SEÇİM SIRA ÖZETİ: Tüm oyuncuların kullandığı oylar açıklanıyor...",
+        legislativePresPrompt: "Cumhurbaşkanı Yasama Eylemi: Mezarlığa ISKARTAYA ATMAK için bir politika kartı seç:",
+        legislativePresPassive: "Yasama Evresi: Cumhurbaşkanı ıskartaya atılacak bir kart seçiyor...",
+        btnConfirmDiscard: "Iskartayı Onayla 🗑",
+        legislativeChanPrompt: "Şansölye Yasama Eylemi: Kalıcı yasa olarak YÜRÜRLÜĞE KOYMAK için bir politika kartı seç:",
+        legislativeChanPassive: "Yasama Evresi: Şansölye yürürlüğe koymak için bir kart seçiyor...",
+        btnConfirmEnact: "Yürürlüğü Onayla 📜",
+        btnRequestVeto: "Gündem Vetosu Çağrısı Yap ✋",
+        vetoRequestPrompt: "VETO ÇAĞRISI TETİKLENDİ: Şansölye bu yasama gündemini tamamen veto etmek istiyor. Çekilen iki kartı da yakmayı kabul ediyor musunuz?",
+        vetoRequestPassive: "Veto Süreci: {name} gündem vetosu talep etti. Cumhurbaşkanının onay yanıtı bekleniyor...",
+        btnVetoAgree: "Kabul Et (Gündemi Yak)",
+        btnVetoDeny: "Reddet (Yasayı Zorla)",
+        powerPeekPrompt: "YÜRÜTME GÜCÜ (POLİTİKA DİKİZLEME): Deste başındaki gelecek 3 kart:",
+        powerPeekPassive: "Yürütme Gücü: Cumhurbaşkanı yaklaşan deste sırasını inceliyor...",
+        btnEndPeek: "Politika Dikizleme Turunu Bitir",
+        powerInvestigatePrompt: "YÜRÜTME GÜCÜ: Sadakatini araştırmak için yaşayan bir oyuncu seç:",
+        powerInvestigatePassive: "Yürütme Gücü: Cumhurbaşkanı şu anda bir oyuncunun sadakat kartını araştırıyor...",
+        powerElectionPrompt: "YÜRÜTME GÜCÜ: Özel Cumhurbaşkanlığını devretmek için bir sonraki oyuncuyu seç:",
+        powerElectionPassive: "Yürütme Gücü: Cumhurbaşkanı Özel Seçim turu için bir aday atıyor...",
+        powerExecutionPrompt: "YÜRÜTME GÜCÜ: İDAM ETMEK için bir oyuncu seç (Hitler'i öldürmek Liberallere zafer kazandırır):",
+        powerExecutionPassive: "🚨 KRİTİK TEHDİT: Cumhurbaşkanı idam için bir oyuncu seçiyor!",
+        victoryTitle: "MAÇ SONUÇLANDI!",
+        detectedParty: "🔍 PARTİ:"
     }
 };
 
-roleRevealOverlay.onclick = (e) => {
-    if (e.target === roleRevealOverlay) e.stopPropagation();
-};
-
-actionModalOverlay.onclick = (e) => {
-    if (e.target === actionModalOverlay) e.stopPropagation();
-};
-
-policyAnimationOverlay.onclick = (e) => {
-    if (e.target === policyAnimationOverlay) e.stopPropagation();
-};
-
-btnCloseRoleReveal.onclick = () => {
-    localRoleBriefingSeen = true;
-    roleRevealOverlay.classList.add('hidden');
+// Overwrites static nodes when dropdown values change
+function updateStaticTranslations() {
+    const pack = langPack[currentLang];
+    
+    document.getElementById('username').placeholder = pack.usernamePlace;
+    document.getElementById('btn-create').textContent = pack.btnCreate;
+    document.getElementById('btn-join').textContent = pack.btnJoin;
+    document.getElementById('txt-menu-divider').textContent = pack.menuDivider;
+    document.getElementById('room-code').placeholder = pack.roomCodePlace;
+    document.getElementById('lbl-lang-choice').textContent = pack.lblLang;
+    
+    document.getElementById('lbl-lobby-code-header').textContent = pack.lobbyCodeHeader;
+    document.querySelector('#lobby-screen .custom-chk-text').textContent = pack.bozbeyRule;
+    document.getElementById('lbl-lobby-players-title').textContent = pack.lobbyPlayersTitle;
+    document.getElementById('btn-add-bot').textContent = pack.btnAddBot;
+    document.getElementById('btn-remove-bot').textContent = pack.btnRemoveBot;
+    document.getElementById('btn-start').textContent = pack.btnStart;
+    
+    document.getElementById('lbl-stat-draw').textContent = pack.statDraw;
+    document.getElementById('lbl-stat-chaos').textContent = pack.statChaos;
+    document.getElementById('lbl-stat-discard').textContent = pack.statDiscard;
+    
+    document.getElementById('lbl-board-liberal-title').textContent = pack.boardLiberal;
+    document.getElementById('lbl-board-fascist-title').textContent = pack.boardFascist;
+    document.getElementById('lbl-seating-chart-title').textContent = pack.seatingChartTitle;
+    
+    document.getElementById('lbl-reveal-ribbon').textContent = pack.revealRibbon;
+    document.getElementById('lbl-reveal-title').textContent = pack.revealTitle;
+    document.getElementById('reveal-card-instructions').textContent = pack.revealInstructions;
+    document.getElementById('btn-close-role-reveal').textContent = pack.btnContinueGame;
+    
+    document.getElementById('lbl-action-ribbon').textContent = pack.actionRibbon;
+    document.getElementById('lbl-flash-stamp').textContent = pack.flashStamp;
+    document.getElementById('lbl-flash-subtext').textContent = pack.flashSubtext;
+    document.getElementById('btn-close-policy-flash').textContent = pack.btnContinue;
+    document.getElementById('btn-return-lobby').textContent = pack.btnReturnLobby;
+    
     if (lastSavedState) {
-        renderControls(lastSavedState); 
+        // Force fully translated UI re-render tracking vectors instantly
+        socket.emit('castVote', { roomCode: null, dummy: true }); // Triggers a micro state loop update safely
     }
-};
-
-btnClosePolicyFlash.onclick = () => {
-    policyAnimationOverlay.classList.add('hidden');
-};
-
-function syncRoomCodeText(code) {
-    document.querySelectorAll('.display-code-global').forEach(el => {
-        el.textContent = code;
-    });
 }
 
+langSelect.onchange = () => {
+    currentLang = langSelect.value;
+    updateStaticTranslations();
+};
+
+function getLocalizedRole(roleName) {
+    if (!roleName) return "";
+    const pack = langPack[currentLang];
+    if (roleName.toUpperCase() === 'LIBERAL') return pack.roleLiberal;
+    if (roleName.toUpperCase() === 'FASCIST') return pack.roleFascist;
+    if (roleName.toUpperCase() === 'HITLER') return pack.roleHitler;
+    if (roleName.toUpperCase() === 'BOZBEY') return pack.roleBozbey;
+    return roleName;
+}
+
+function getLocalizedParty(partyName) {
+    if (!partyName) return "";
+    const pack = langPack[currentLang];
+    if (partyName.toUpperCase() === 'LIBERAL') return pack.roleLiberal;
+    if (partyName.toUpperCase() === 'FASCIST') return pack.roleFascist;
+    return partyName;
+}
+
+socket.on('roomCreated', (code) => {
+    currentRoomCode = code;
+    syncRoomCodeText(code);
+    setupScreen.classList.add('hidden');
+    lobbyScreen.classList.remove('hidden');
+});
+
 socket.on('gameStateUpdate', (state) => {
+    // Catch state bypass commands safely
+    if (state.roomCode === null) return;
+    
     currentRoomCode = state.roomCode;
     lastSavedState = state; 
     syncRoomCodeText(state.roomCode); 
+    
+    const pack = langPack[currentLang];
     
     if (state.status === 'LOBBY') {
         localRoleBriefingSeen = false;
@@ -160,20 +318,20 @@ socket.on('gameStateUpdate', (state) => {
 
         if (!localRoleBriefingSeen && state.yourRole) {
             revealCardVisual.className = `reveal-identity-banner identity-${state.yourRole}`;
-            revealCardVisual.textContent = state.yourRole.toUpperCase();
-            roleRevealOverlay.classList.remove('hidden');
+            revealCardVisual.textContent = getLocalizedRole(state.yourRole);
+            roleRevealOverlay.className = "modal-overlay animate-fade";
         }
 
         const badge = document.getElementById('role-badge');
-        badge.textContent = `Secret Role: ${state.yourRole}`;
+        badge.textContent = `${pack.roleWord}: ${getLocalizedRole(state.yourRole)}`;
         if (state.yourRole === 'Bozbey') badge.style.color = '#e040fb'; 
         else badge.style.color = state.yourRole === 'Liberal' ? '#2196f3' : '#f44336';
 
-        document.getElementById('current-phase-text').textContent = `PHASE: ${state.phase.replace(/_/g, ' ')}`;
+        document.getElementById('current-phase-text').textContent = `${pack.phaseWord}: ${state.phase.replace(/_/g, ' ')}`;
         
         renderTrack('liberal-slots-track', state.liberalPolicies, 5, 'Liberal', state.players.length);
         renderTrack('fascist-slots-track', state.fascistPolicies, 6, 'Fascist', state.players.length);
-
+        
         const pList = document.getElementById('game-players-list');
         pList.innerHTML = '';
         state.players.forEach(p => {
@@ -182,46 +340,44 @@ socket.on('gameStateUpdate', (state) => {
             
             const nameSpan = document.createElement('div');
             nameSpan.className = 'player-card-name';
-            nameSpan.innerHTML = `${p.name} ${p.id === myId ? '<strong style="color:#ffca28;">(You)</strong>' : ''}`;
+            nameSpan.innerHTML = `${p.name} ${p.id === myId ? `<strong style="color:#ffca28;">${pack.badgeYouSuffix}</strong>` : ''}`;
             card.appendChild(nameSpan);
 
             const badgesContainer = document.createElement('div');
             badgesContainer.className = 'player-card-badges-container';
 
-            if(p.isPresident) badgesContainer.innerHTML += `<span class="badge-tag pres">PRESIDENT</span>`;
-            if(p.isChancellor) badgesContainer.innerHTML += `<span class="badge-tag chan">CHANCELLOR</span>`;
+            if(p.isPresident) badgesContainer.innerHTML += `<span class="badge-tag pres">${pack.badgePres}</span>`;
+            if(p.isChancellor) badgesContainer.innerHTML += `<span class="badge-tag chan">${pack.badgeChan}</span>`;
             
-            // Fixed Bug Condition: Shows waiting label immediately to reveal who hasn't voted yet
-            if (state.phase === 'VOTING' && !p.hasVoted && !p.isDead && !p.isDisconnected) {
-                badgesContainer.innerHTML += `<span class="badge-tag waiting-vote">⏳ WAITING</span>`;
-            } else if(p.hasVoted && state.phase !== 'VOTE_REVEAL' && !p.isDead && !p.isDisconnected) {
-                badgesContainer.innerHTML += `<span class="badge-tag voted">✓ VOTED</span>`;
+            if (state.phase === 'VOTING' && !p.isDead && !p.isDisconnected) {
+                if (!p.hasVoted) {
+                    badgesContainer.innerHTML += `<span class="badge-tag waiting-vote">${pack.badgeWaiting}</span>`;
+                } else if (state.phase !== 'VOTE_REVEAL') {
+                    badgesContainer.innerHTML += `<span class="badge-tag voted">${pack.badgeVoted}</span>`;
+                }
+            } else if (p.hasVoted && state.phase !== 'VOTE_REVEAL' && !p.isDead && !p.isDisconnected) {
+                badgesContainer.innerHTML += `<span class="badge-tag voted">${pack.badgeVoted}</span>`;
             }
 
-            if(p.isDisconnected && !p.isDead) badgesContainer.innerHTML += `<span class="badge-tag offline">🔌 OFFLINE</span>`;
-            if(p.isDead) badgesContainer.innerHTML += `<span class="badge-tag" style="background:#000; color:#fff;">☠ DECEASED</span>`;
+            if(p.isDisconnected && !p.isDead) badgesContainer.innerHTML += `<span class="badge-tag offline">${pack.badgeOffline}</span>`;
+            if(p.isDead) badgesContainer.innerHTML += `<span class="badge-tag" style="background:#000; color:#fff;">${pack.badgeDead}</span>`;
 
             if (p.revealedRole && !p.isDead) {
                 const roleTag = document.createElement('div');
                 roleTag.className = `player-card-role-block role-block-${p.revealedRole.toLowerCase()}`;
-                roleTag.textContent = p.revealedRole.toUpperCase();
+                roleTag.textContent = getLocalizedRole(p.revealedRole);
                 badgesContainer.appendChild(roleTag);
             }
             
             if (p.investigatedParty && !p.isDead) {
-                badgesContainer.innerHTML += `<span class="badge-tag intel-report">🔍 PARTY: ${p.investigatedParty}</span>`;
+                badgesContainer.innerHTML += `<span class="badge-tag intel-report">${pack.detectedParty} ${getLocalizedParty(p.investigatedParty)}</span>`;
             }
             card.appendChild(badgesContainer);
 
             if (state.phase === 'VOTE_REVEAL' && p.voteValue !== undefined && p.voteValue !== null) {
                 const stamp = document.createElement('div');
-                if (p.voteValue === true) {
-                    stamp.className = 'card-live-ballot-stamp stamp-ja';
-                    stamp.textContent = 'JA!';
-                } else {
-                    stamp.className = 'card-live-ballot-stamp stamp-nein';
-                    stamp.textContent = 'NEIN';
-                }
+                stamp.className = p.voteValue === true ? 'card-live-ballot-stamp stamp-ja' : 'card-live-ballot-stamp stamp-nein';
+                stamp.textContent = p.voteValue === true ? (currentLang === 'tr' ? 'EVET' : 'JA!') : (currentLang === 'tr' ? 'HAYIR' : 'NEIN');
                 card.appendChild(stamp);
             }
             
@@ -238,14 +394,15 @@ socket.on('gameStateUpdate', (state) => {
         if (state.amIHost) btnReturnLobby.classList.remove('hidden');
         else btnReturnLobby.classList.add('hidden');
 
-        document.getElementById('victory-title').textContent = "MATCH CONCLUDED!";
+        document.getElementById('victory-title').textContent = pack.victoryTitle;
         document.getElementById('victory-reason').textContent = state.winner;
     }
 });
 
 function triggerFlashOverlayAnimation(factionType) {
+    const pack = langPack[currentLang];
     policyAnimationOverlay.className = `full-screen-flash-overlay flash-${factionType.toLowerCase()}-theme`;
-    flashPolicyTitle.textContent = `${factionType.toUpperCase()} POLICY`;
+    flashPolicyTitle.textContent = factionType === 'Liberal' ? pack.boardLiberal : pack.boardFascist;
     policyAnimationOverlay.classList.remove('hidden');
 }
 
@@ -301,6 +458,8 @@ function renderControls(state) {
     const prompt = document.getElementById('action-prompt');
     ctrl.innerHTML = '';
     
+    const pack = langPack[currentLang];
+    
     if (!localRoleBriefingSeen) {
         actionModalOverlay.classList.add('hidden');
         return;
@@ -311,10 +470,10 @@ function renderControls(state) {
     const myPlayerObj = state.players.find(p => p.id === myId);
 
     let isMyActionTurn = false;
-    let fallbackStatusText = "Waiting for other players to resolve current actions...";
+    let fallbackStatusText = pack.waitingTurnLoop;
 
     if (myPlayerObj && myPlayerObj.isDisconnected) {
-        passivePromptText.textContent = "Attempting link restoration diagnostics...";
+        passivePromptText.textContent = "Restoration Sync...";
         actionModalOverlay.classList.add('hidden');
         return;
     }
@@ -322,7 +481,7 @@ function renderControls(state) {
     if (state.phase === 'NOMINATION') {
         if (amIPresident) {
             isMyActionTurn = true;
-            prompt.textContent = "You are the President! Choose a living player to nominate as Chancellor:";
+            prompt.textContent = pack.nominationPresidentPrompt;
             state.players.forEach(p => {
                 if (p.id !== myId && !p.isDead && !p.isDisconnected && p.isEligibleChancellor) {
                     const btn = document.createElement('button');
@@ -337,25 +496,25 @@ function renderControls(state) {
             });
         } else {
             const currentPresName = state.players.find(p => p.isPresident)?.name || "President";
-            fallbackStatusText = `Nomination Phase: Waiting for ${currentPresName} to propose a Chancellor...`;
+            fallbackStatusText = pack.nominationPassivePrompt.replace('{name}', currentPresName);
         }
     } 
     else if (state.phase === 'VOTING') {
         if(myPlayerObj && myPlayerObj.isDead) {
-            fallbackStatusText = "You are deceased. Watching the election process unfold...";
+            fallbackStatusText = pack.votingDeceasedPassive;
         } else {
             isMyActionTurn = true;
             const currentPresObj = state.players.find(p => p.isPresident);
-            const currentPresName = currentPresObj ? currentPresObj.name : "The President";
+            const currentPresName = currentPresObj ? currentPresObj.name : "President";
             
-            prompt.textContent = `President ${currentPresName} nominated "${state.currentNominee}" as Chancellor. Cast your Government Vote:`;
+            prompt.textContent = pack.votingChoicePrompt.replace('{pres}', currentPresName).replace('{chan}', state.currentNominee);
             
-            ['Ja', 'Nein'].forEach(v => {
+            [(currentLang === 'tr' ? 'Evet' : 'Ja'), (currentLang === 'tr' ? 'Hayır' : 'Nein')].forEach((v, idx) => {
                 const btn = document.createElement('button');
-                btn.className = v === 'Ja' ? "btn success-btn animate-pop" : "btn wood-btn primary animate-pop";
+                btn.className = idx === 0 ? "btn success-btn animate-pop" : "btn wood-btn primary animate-pop";
                 btn.textContent = v;
                 btn.onclick = () => {
-                    socket.emit('castVote', { roomCode: currentRoomCode, vote: v === 'Ja' });
+                    socket.emit('castVote', { roomCode: currentRoomCode, vote: idx === 0 });
                     actionModalOverlay.classList.add('hidden');
                 };
                 ctrl.appendChild(btn);
@@ -363,7 +522,7 @@ function renderControls(state) {
         }
     } 
     else if (state.phase === 'VOTE_REVEAL') {
-        fallbackStatusText = "ELECTION BALLOT SUMMARY: Revealing votes cast by all players...";
+        fallbackStatusText = pack.voteRevealPassive;
     }
     else if (state.phase === 'LEGISLATIVE_PRESIDENT') {
         if (amIPresident) {
@@ -372,12 +531,12 @@ function renderControls(state) {
             
             const drawPresidentialCardInterface = () => {
                 ctrl.innerHTML = '';
-                prompt.textContent = "Presidential Legislative Action: Select a policy card to DISCARD into the graveyard:";
+                prompt.textContent = pack.legislativePresPrompt;
                 
                 state.drawnCards.forEach((card, idx) => {
                     const div = document.createElement('div');
                     div.className = `policy-card card-${card} animate-pop ${chosenCardIndex === idx ? 'selected-target-card' : ''}`;
-                    div.textContent = card;
+                    div.textContent = getLocalizedParty(card);
                     
                     div.onclick = () => {
                         chosenCardIndex = idx;
@@ -394,7 +553,7 @@ function renderControls(state) {
                     const confirmBtn = document.createElement('button');
                     confirmBtn.className = "btn wood-btn primary animate-pop";
                     confirmBtn.style.width = "100%";
-                    confirmBtn.textContent = `Confirm Discard Selection 🗑`;
+                    confirmBtn.textContent = pack.btnConfirmDiscard;
                     
                     confirmBtn.onclick = () => {
                         const keep = [0, 1, 2].filter(i => i !== chosenCardIndex);
@@ -407,7 +566,7 @@ function renderControls(state) {
             };
             drawPresidentialCardInterface();
         } else {
-            fallbackStatusText = "Legislative Phase: The President is choosing a card to discard...";
+            fallbackStatusText = pack.legislativePresPassive;
         }
     } 
     else if (state.phase === 'LEGISLATIVE_CHANCELLOR') {
@@ -417,12 +576,12 @@ function renderControls(state) {
 
             const drawChancellorCardInterface = () => {
                 ctrl.innerHTML = '';
-                prompt.textContent = "Chancellor Legislative Action: Select a policy card to ENACT into constitutional law:";
+                prompt.textContent = pack.legislativeChanPrompt;
                 
                 state.drawnCards.forEach((card, idx) => {
                     const div = document.createElement('div');
                     div.className = `policy-card card-${card} animate-pop ${chosenCardIndex === idx ? 'selected-target-card' : ''}`;
-                    div.textContent = card;
+                    div.textContent = getLocalizedParty(card);
                     
                     div.onclick = () => {
                         chosenCardIndex = idx;
@@ -439,7 +598,7 @@ function renderControls(state) {
                     const confirmBtn = document.createElement('button');
                     confirmBtn.className = "btn success-btn animate-pop";
                     confirmBtn.style.width = "100%";
-                    confirmBtn.textContent = `Confirm Enact Selection 📜`;
+                    confirmBtn.textContent = pack.btnConfirmEnact;
                     
                     confirmBtn.onclick = () => {
                         socket.emit('chancellorEnact', { roomCode: currentRoomCode, enactIndex: chosenCardIndex });
@@ -455,7 +614,7 @@ function renderControls(state) {
                     vetoBtn.style.background = "linear-gradient(to bottom, #ff3d00, #c62828)";
                     vetoBtn.style.display = "block";
                     vetoBtn.style.margin = "15px auto 0";
-                    vetoBtn.textContent = "Call For Agenda Veto ✋";
+                    vetoBtn.textContent = pack.btnRequestVeto;
                     vetoBtn.onclick = () => {
                         socket.emit('requestVeto', currentRoomCode);
                         actionModalOverlay.classList.add('hidden');
@@ -465,17 +624,17 @@ function renderControls(state) {
             };
             drawChancellorCardInterface();
         } else {
-            fallbackStatusText = "Legislative Phase: The Chancellor is selecting a card to enact into law...";
+            fallbackStatusText = pack.legislativeChanPassive;
         }
     } 
     else if (state.phase === 'VETO_REQUEST') {
         if (amIPresident) {
             isMyActionTurn = true;
-            prompt.textContent = "VETO CALL TRIGGERED: The Chancellor wishes to completely veto this legislative agenda. Do you agree to burn both drawn cards?";
+            prompt.textContent = pack.vetoRequestPrompt;
             
             const acceptBtn = document.createElement('button');
             acceptBtn.className = "btn success-btn animate-pop";
-            acceptBtn.textContent = "Agree (Burn Agenda)";
+            acceptBtn.textContent = pack.btnVetoAgree;
             acceptBtn.onclick = () => {
                 socket.emit('respondToVeto', { roomCode: currentRoomCode, accept: true });
                 actionModalOverlay.classList.add('hidden');
@@ -483,7 +642,7 @@ function renderControls(state) {
 
             const denyBtn = document.createElement('button');
             denyBtn.className = "btn wood-btn primary animate-pop";
-            denyBtn.textContent = "Deny (Force Law)";
+            denyBtn.textContent = pack.btnVetoDeny;
             denyBtn.onclick = () => {
                 socket.emit('respondToVeto', { roomCode: currentRoomCode, accept: false });
                 actionModalOverlay.classList.add('hidden');
@@ -493,43 +652,43 @@ function renderControls(state) {
             ctrl.appendChild(denyBtn);
         } else {
             const currentChanName = state.players.find(p => p.isChancellor)?.name || "Chancellor";
-            fallbackStatusText = `Veto Procedure: ${currentChanName} requested an agenda veto. Waiting for President's agreement response...`;
+            fallbackStatusText = pack.vetoRequestPassive.replace('{name}', currentChanName);
         }
     }
     else if (state.phase === 'PRESIDENTIAL_POWER_PEEK') {
         if (amIPresident) {
             isMyActionTurn = true;
-            prompt.textContent = "EXECUTIVE POWER (POLICY PEEK): Top 3 upcoming cards from the Draw Deck:";
+            prompt.textContent = pack.powerPeekPrompt;
             state.drawnCards.forEach(card => {
                 const div = document.createElement('div');
                 div.className = `policy-card card-${card} animate-pop`;
                 div.style.cursor = "default";
-                div.textContent = card;
+                div.textContent = getLocalizedParty(card);
                 ctrl.appendChild(div);
             });
             const closeBtn = document.createElement('button');
             closeBtn.className = "btn control-btn animate-pop";
             closeBtn.style.display = "block";
             closeBtn.style.margin = "15px auto 0";
-            closeBtn.textContent = "End Policy Peek Turn";
+            closeBtn.textContent = pack.btnEndPeek;
             closeBtn.onclick = () => {
                 socket.emit('closePolicyPeek', currentRoomCode);
                 actionModalOverlay.classList.add('hidden');
             };
             ctrl.appendChild(closeBtn);
         } else {
-            fallbackStatusText = "Executive Power: The President is inspecting the upcoming deck order...";
+            fallbackStatusText = pack.powerPeekPassive;
         }
     }
     else if (state.phase === 'PRESIDENTIAL_POWER_INVESTIGATE') {
         if (amIPresident) {
             isMyActionTurn = true;
-            prompt.textContent = "EXECUTIVE POWER: Select a living player to investigate their Party Loyalty:";
+            prompt.textContent = pack.powerInvestigatePrompt;
             state.players.forEach(p => {
                 if (p.id !== myId && !p.isDead && !p.isDisconnected) {
                     const btn = document.createElement('button');
                     btn.className = "btn control-btn animate-pop";
-                    btn.textContent = `Investigate ${p.name}`;
+                    btn.textContent = `${currentLang === 'tr' ? 'Araştır:' : 'Investigate'} ${p.name}`;
                     btn.onclick = () => {
                         socket.emit('investigateLoyalty', { roomCode: currentRoomCode, targetId: p.id });
                         actionModalOverlay.classList.add('hidden');
@@ -538,19 +697,19 @@ function renderControls(state) {
                 }
             });
         } else {
-            fallbackStatusText = "Executive Power: The President is currently investigating a player's loyalty card...";
+            fallbackStatusText = pack.powerInvestigatePassive;
         }
     }
     else if (state.phase === 'PRESIDENTIAL_POWER_ELECTION') {
         if (amIPresident) {
             isMyActionTurn = true;
-            prompt.textContent = "EXECUTIVE POWER: Select the next player to pass the Special Presidency to:";
+            prompt.textContent = pack.powerElectionPrompt;
             state.players.forEach(p => {
                 if (p.id !== myId && !p.isDead && !p.isDisconnected) {
                     const btn = document.createElement('button');
                     btn.className = "btn control-btn animate-pop";
                     btn.style.background = "linear-gradient(to bottom, #9c27b0, #6a1b9a)";
-                    btn.textContent = `Appoint ${p.name}`;
+                    btn.textContent = `${currentLang === 'tr' ? 'Ata:' : 'Appoint'} ${p.name}`;
                     btn.onclick = () => {
                         socket.emit('callSpecialElection', { roomCode: currentRoomCode, targetId: p.id });
                         actionModalOverlay.classList.add('hidden');
@@ -559,19 +718,19 @@ function renderControls(state) {
                 }
             });
         } else {
-            fallbackStatusText = "Executive Power: The President is appointing a candidate to a Special Election turn...";
+            fallbackStatusText = pack.powerElectionPassive;
         }
     }
     else if (state.phase === 'PRESIDENTIAL_POWER_EXECUTION') {
         if (amIPresident) {
             isMyActionTurn = true;
-            prompt.textContent = "EXECUTIVE POWER: Choose a player to EXECUTE (Killing Hitler awards Liberals victory):";
+            prompt.textContent = pack.powerExecutionPrompt;
             state.players.forEach(p => {
                 if (p.id !== myId && !p.isDead && !p.isDisconnected) {
                     const btn = document.createElement('button');
                     btn.className = "btn wood-btn primary animate-pop";
                     btn.style.boxShadow = "0 0 10px #ff3d00";
-                    btn.textContent = `Execute ${p.name} ☠`;
+                    btn.textContent = `${currentLang === 'tr' ? 'İdam Et:' : 'Execute'} ${p.name} ☠`;
                     btn.onclick = () => {
                         socket.emit('executeTargetPlayer', { roomCode: currentRoomCode, targetId: p.id });
                         actionModalOverlay.classList.add('hidden');
@@ -580,13 +739,13 @@ function renderControls(state) {
                 }
             });
         } else {
-            fallbackStatusText = "🚨 CRITICAL THREAT: The President is selecting a player for execution!";
+            fallbackStatusText = pack.powerExecutionPassive;
         }
     }
 
     if (isMyActionTurn) {
         actionModalOverlay.classList.remove('hidden');
-        passivePromptText.textContent = "Your turn! Please make a selection in the overlay popup window.";
+        passivePromptText.textContent = pack.yourTurnModalAlert;
     } else {
         actionModalOverlay.classList.add('hidden');
         passivePromptText.textContent = fallbackStatusText;

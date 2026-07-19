@@ -263,7 +263,7 @@ function triggerBotActions(roomCode) {
                 
                 if (victim.role === 'Bozbey') {
                     room.status = 'FINISHED';
-                    room.winner = `Bozbey (${victim.name} manipulated the table to get executed and won!)`;
+                    room.winner = `Bozbey (${victim.name} won!)`;
                 } else if (victim.role === 'Hitler') {
                     room.status = 'FINISHED';
                     room.winner = 'Liberals (Hitler was executed!)';
@@ -318,7 +318,11 @@ function executeVetoResolution(room, accept) {
 function evaluateVotes(roomCode) {
     const room = rooms[roomCode.toUpperCase()];
     const activeVoters = room.players.filter(p => !p.isDead && !p.isDisconnected);
-    if (Object.keys(room.votes).length !== activeVoters.length) return;
+    if (Object.keys(room.votes).length !== activeVoters.length) {
+        // Core Bug Fix Hook: Authoritatively broadcasts mid-phase status adjustments to update tracking badges
+        broadcastState(roomCode);
+        return;
+    }
 
     room.phase = 'VOTE_REVEAL';
     broadcastState(roomCode);
@@ -419,7 +423,7 @@ io.on('connection', (socket) => {
             code: roomCode, 
             status: 'LOBBY',
             hostId: socket.id, 
-            players: [{ id: socket.id, name: playerName, role: null, isBot: false, isDead: false, isDisconnected: false }],
+            players: [{ id: socket.id, name: cleanName, role: null, isBot: false, isDead: false, isDisconnected: false }],
             deck: [], discardPile: [], presidentIdx: 0, lastRegularPresidentIdx: 0, chancellorIdx: null,
             liberalPolicies: 0, fascistPolicies: 0, electionTracker: 0,
             phase: 'SETUP', votes: {}, drawnCards: [], winner: null, specialPresidentActive: false,
@@ -498,8 +502,6 @@ io.on('connection', (socket) => {
         room.lastElectedChancellorId = null;
         room.investigations = {};
         room.specialPresidentActive = false;
-        
-        // Fixed: Explicitly clear the discard pile array and deck array on parameters fallback reset
         room.discardPile = [];
         room.deck = [];
 
@@ -574,6 +576,27 @@ io.on('connection', (socket) => {
         if (!room || room.phase !== 'VOTING') return;
         room.votes[socket.id] = vote;
         evaluateVotes(roomCode);
+    });
+
+    socket.on('requestVeto', (roomCode) => {
+        if (!roomCode) return;
+        const room = rooms[roomCode.toUpperCase()];
+        if (!room || room.phase !== 'LEGISLATIVE_CHANCELLOR') return;
+        if (room.players[room.chancellorIdx].id !== socket.id) return;
+        if (room.fascistPolicies !== 5) return;
+
+        room.phase = 'VETO_REQUEST';
+        broadcastState(roomCode);
+    });
+
+    socket.on('respondToVeto', ({ roomCode, accept }) => {
+        if (!roomCode) return;
+        const room = rooms[roomCode.toUpperCase()];
+        if (!room || room.phase !== 'VETO_REQUEST') return;
+        if (room.players[room.presidentIdx].id !== socket.id) return;
+
+        executeVetoResolution(room, accept);
+        broadcastState(roomCode);
     });
 
     socket.on('presidentDiscard', ({ roomCode, keepIndex1, keepIndex2 }) => {

@@ -10,10 +10,19 @@
     <div id="game-container">
         <div id="setup-screen" class="screen main-menu animate-fade">
             <h1 class="game-logo">Secret Hitler</h1>
+            
+            <div class="lang-selector-card animate-pop">
+                <label for="lang-select" id="lbl-lang-choice">🌐 Select Language / Dil Seçin:</label>
+                <select id="lang-select">
+                    <option value="en" selected>English</option>
+                    <option value="tr">Türkçe</option>
+                </select>
+            </div>
+
             <div class="menu-box">
                 <input type="text" id="username" placeholder="Enter Your Name" autocomplete="off" maxlength="12">
                 <button id="btn-create" class="btn wood-btn primary">Create New Lobby</button>
-                <div class="divider"><span>OR</span></div>
+                <div class="divider"><span id="txt-menu-divider">OR</span></div>
                 <input type="text" id="room-code" placeholder="4-Letter Code" maxlength="4">
                 <button id="btn-join" class="btn wood-btn secondary">Join Existing Lobby</button>
             </div>
@@ -21,7 +30,7 @@
 
         <div id="lobby-screen" class="screen hidden animate-fade">
             <div class="board-header">
-                <h2>LOBBY CODE: <span class="display-code-global">----</span></h2>
+                <h2><span id="lbl-lobby-code-header">LOBBY CODE</span>: <span class="display-code-global">----</span></h2>
             </div>
             <div class="lobby-box">
                 <div class="bozbey-rule-card animate-pop">
@@ -31,7 +40,7 @@
                     </label>
                 </div>
 
-                <h3>Players in the Lobby (<span id="lobby-count">1</span>/10 Joined - Requires 5 to Start):</h3>
+                <h3 id="lbl-lobby-players-title">Players in the Lobby:</h3>
                 <ul id="player-list"></ul>
                 <div class="lobby-controls">
                     <button id="btn-add-bot" class="btn control-btn hidden">Add AI Bot</button>
@@ -50,12 +59,12 @@
 
             <div class="compact-stats-bar animate-pop">
                 <div class="mini-stat-node draw-node">
-                    <span class="stat-label">DRAW</span>
+                    <span class="stat-label" id="lbl-stat-draw">DRAW</span>
                     <span id="deck-count" class="stat-val">17</span>
                 </div>
                 
                 <div class="mini-chaos-tracker">
-                    <span class="stat-label">CHAOS</span>
+                    <span class="stat-label" id="lbl-stat-chaos">CHAOS</span>
                     <div class="mini-tracker-dots">
                         <div class="mini-dot" data-index="1">1</div>
                         <div class="mini-dot" data-index="2">2</div>
@@ -64,18 +73,18 @@
                 </div>
 
                 <div class="mini-stat-node discard-node">
-                    <span class="stat-label">DISCARD</span>
+                    <span class="stat-label" id="lbl-stat-discard">DISCARD</span>
                     <span id="discard-count" class="stat-val">0</span>
                 </div>
             </div>
 
             <div class="board-table-felt">
                 <div class="visual-board liberal-board">
-                    <div class="board-title">LIBERAL POLICIES</div>
+                    <div class="board-title" id="lbl-board-liberal-title">LIBERAL POLICIES</div>
                     <div class="track-slots" id="liberal-slots-track"></div>
                 </div>
                 <div class="visual-board fascist-board">
-                    <div class="board-title">FASCIST POLICIES</div>
+                    <div class="board-title" id="lbl-board-fascist-title">FASCIST POLICIES</div>
                     <div class="track-slots" id="fascist-slots-track"></div>
                 </div>
             </div>
@@ -85,16 +94,16 @@
             </div>
 
             <div class="seating-chart">
-                <h3>Seating Chart & Live Registry</h3>
+                <h3 id="lbl-seating-chart-title">Seating Chart & Live Registry</h3>
                 <div id="game-players-list" class="players-card-grid-deck"></div>
             </div>
         </div>
 
         <div id="role-reveal-overlay" class="modal-overlay hidden">
             <div class="modal-card-box role-reveal-box animate-pop">
-                <div class="modal-header-ribbon" style="background: #000; color: #ff3d00; border-bottom: 2px solid #ff3d00;">CLASSIFIED BRIEFING</div>
+                <div class="modal-header-ribbon" id="lbl-reveal-ribbon" style="background: #000; color: #ff3d00; border-bottom: 2px solid #ff3d00;">CLASSIFIED BRIEFING</div>
                 <div class="modal-inner-content">
-                    <h3 style="font-family:'Cinzel', serif; letter-spacing: 2px; margin-top:0;">YOUR SECRET IDENTITY</h3>
+                    <h3 id="lbl-reveal-title" style="font-family:'Cinzel', serif; letter-spacing: 2px; margin-top:0;">YOUR SECRET IDENTITY</h3>
                     <div id="reveal-card-visual" class="reveal-identity-banner">UNKNOWN</div>
                     <p id="reveal-card-instructions" style="color: #b0bec5; font-size: 1.1rem; margin-bottom: 25px;">Keep your identity hidden from the rest of the table.</p>
                     <button id="btn-close-role-reveal" class="btn success-btn" style="width:100%;">Continue to Game</button>
@@ -104,7 +113,7 @@
 
         <div id="action-modal-overlay" class="modal-overlay hidden">
             <div class="modal-card-box animate-pop">
-                <div class="modal-header-ribbon">ACTION REQUIRED</div>
+                <div class="modal-header-ribbon" id="lbl-action-ribbon">ACTION REQUIRED</div>
                 <div class="modal-inner-content">
                     <p id="action-prompt">Choose an option to proceed:</p>
                     <div id="interactive-controls" class="button-row"></div>
@@ -114,9 +123,9 @@
 
         <div id="policy-animation-overlay" class="full-screen-flash-overlay hidden">
             <div class="flash-banner-content animate-pop">
-                <div class="stamp-badge">LAW ENACTED</div>
+                <div class="stamp-badge" id="lbl-flash-stamp">LAW ENACTED</div>
                 <h2 id="flash-policy-title" class="flash-title">LIBERAL POLICY</h2>
-                <p style="color:#fff; font-size:1.2rem; letter-spacing:1px; margin-bottom: 20px;">The country moves closer to its conclusion...</p>
+                <p id="lbl-flash-subtext" style="color:#fff; font-size:1.2rem; letter-spacing:1px; margin-bottom: 20px;">The country moves closer to its conclusion...</p>
                 <button id="btn-close-policy-flash" class="btn success-btn" style="min-width: 180px; box-shadow: 0 0 15px rgba(0,0,0,0.6);">Continue</button>
             </div>
         </div>
