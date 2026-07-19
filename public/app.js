@@ -6,7 +6,6 @@ let recordedFascistLaws = null;
 let localRoleBriefingSeen = false;
 let lastSavedState = null;
 
-// Dynamic tracking pointer variable for current chosen dictionary language mode
 let currentLang = 'en';
 
 const setupScreen = document.getElementById('setup-screen');
@@ -31,7 +30,70 @@ const policyAnimationOverlay = document.getElementById('policy-animation-overlay
 const flashPolicyTitle = document.getElementById('flash-policy-title');
 const btnClosePolicyFlash = document.getElementById('btn-close-policy-flash');
 
-// Complete Comprehensive Translation Dictionary Mapping Matrix Pack
+socket.on('connect', () => { myId = socket.id; });
+socket.on('errorMsg', alert);
+
+socket.on('investigationLoyaltyResult', (data) => {
+    alert(`INVESTIGATION REPORT:\nPlayer "${data.name}" belongs to the ${data.party} Party alignment.`);
+});
+
+document.getElementById('btn-create').onclick = () => {
+    const name = document.getElementById('username').value.trim();
+    if(name) socket.emit('createRoom', name);
+};
+
+document.getElementById('btn-join').onclick = () => {
+    const name = document.getElementById('username').value.trim();
+    const code = document.getElementById('room-code').value.trim().toUpperCase();
+    if(name && code) socket.emit('joinRoom', { roomCode: code, playerName: name });
+};
+
+btnStart.onclick = () => {
+    if(currentRoomCode) socket.emit('startGame', currentRoomCode);
+};
+
+btnAddBot.onclick = () => {
+    if(currentRoomCode) socket.emit('addBot', currentRoomCode);
+};
+
+btnRemoveBot.onclick = () => {
+    if(currentRoomCode) socket.emit('removeBot', currentRoomCode);
+};
+
+btnReturnLobby.onclick = () => {
+    if(currentRoomCode) socket.emit('returnToLobby', currentRoomCode);
+};
+
+chkBozbey.onchange = () => {
+    if (currentRoomCode) {
+        socket.emit('toggleBozbeyMode', { roomCode: currentRoomCode, enabled: chkBozbey.checked });
+    }
+};
+
+roleRevealOverlay.onclick = (e) => {
+    if (e.target === roleRevealOverlay) e.stopPropagation();
+};
+
+actionModalOverlay.onclick = (e) => {
+    if (e.target === actionModalOverlay) e.stopPropagation();
+};
+
+policyAnimationOverlay.onclick = (e) => {
+    if (e.target === policyAnimationOverlay) e.stopPropagation();
+};
+
+btnCloseRoleReveal.onclick = () => {
+    localRoleBriefingSeen = true;
+    roleRevealOverlay.classList.add('hidden');
+    if (lastSavedState) {
+        renderControls(lastSavedState); 
+    }
+};
+
+btnClosePolicyFlash.onclick = () => {
+    policyAnimationOverlay.classList.add('hidden');
+};
+
 const langPack = {
     en: {
         usernamePlace: "Enter Your Name",
@@ -177,46 +239,50 @@ const langPack = {
     }
 };
 
-// Overwrites static nodes when dropdown values change
+// Requirement: Wrapped securely in element checking closures to protect initial listener pipelines
 function updateStaticTranslations() {
     const pack = langPack[currentLang];
     
-    document.getElementById('username').placeholder = pack.usernamePlace;
-    document.getElementById('btn-create').textContent = pack.btnCreate;
-    document.getElementById('btn-join').textContent = pack.btnJoin;
-    document.getElementById('txt-menu-divider').textContent = pack.menuDivider;
-    document.getElementById('room-code').placeholder = pack.roomCodePlace;
-    document.getElementById('lbl-lang-choice').textContent = pack.lblLang;
+    const setTxt = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+    const setPlaceholder = (id, txt) => { const el = document.getElementById(id); if (el) el.placeholder = txt; };
+
+    setPlaceholder('username', pack.usernamePlace);
+    setTxt('btn-create', pack.btnCreate);
+    setTxt('btn-join', pack.btnJoin);
+    setTxt('txt-menu-divider', pack.menuDivider);
+    setPlaceholder('room-code', pack.roomCodePlace);
+    setTxt('lbl-lang-choice', pack.lblLang);
     
-    document.getElementById('lbl-lobby-code-header').textContent = pack.lobbyCodeHeader;
-    document.querySelector('#lobby-screen .custom-chk-text').textContent = pack.bozbeyRule;
-    document.getElementById('lbl-lobby-players-title').textContent = pack.lobbyPlayersTitle;
-    document.getElementById('btn-add-bot').textContent = pack.btnAddBot;
-    document.getElementById('btn-remove-bot').textContent = pack.btnRemoveBot;
-    document.getElementById('btn-start').textContent = pack.btnStart;
+    setTxt('lbl-lobby-code-header', pack.lobbyCodeHeader);
+    const chkText = document.querySelector('#lobby-screen .custom-chk-text');
+    if (chkText) chkText.textContent = pack.bozbeyRule;
     
-    document.getElementById('lbl-stat-draw').textContent = pack.statDraw;
-    document.getElementById('lbl-stat-chaos').textContent = pack.statChaos;
-    document.getElementById('lbl-stat-discard').textContent = pack.statDiscard;
+    setTxt('lbl-lobby-players-title', pack.lobbyPlayersTitle);
+    setTxt('btn-add-bot', pack.btnAddBot);
+    setTxt('btn-remove-bot', pack.btnRemoveBot);
+    setTxt('btn-start', pack.btnStart);
     
-    document.getElementById('lbl-board-liberal-title').textContent = pack.boardLiberal;
-    document.getElementById('lbl-board-fascist-title').textContent = pack.boardFascist;
-    document.getElementById('lbl-seating-chart-title').textContent = pack.seatingChartTitle;
+    setTxt('lbl-stat-draw', pack.statDraw);
+    setTxt('lbl-stat-chaos', pack.statChaos);
+    setTxt('lbl-stat-discard', pack.statDiscard);
     
-    document.getElementById('lbl-reveal-ribbon').textContent = pack.revealRibbon;
-    document.getElementById('lbl-reveal-title').textContent = pack.revealTitle;
-    document.getElementById('reveal-card-instructions').textContent = pack.revealInstructions;
-    document.getElementById('btn-close-role-reveal').textContent = pack.btnContinueGame;
+    setTxt('lbl-board-liberal-title', pack.boardLiberal);
+    setTxt('lbl-board-fascist-title', pack.boardFascist);
+    setTxt('lbl-seating-chart-title', pack.seatingChartTitle);
     
-    document.getElementById('lbl-action-ribbon').textContent = pack.actionRibbon;
-    document.getElementById('lbl-flash-stamp').textContent = pack.flashStamp;
-    document.getElementById('lbl-flash-subtext').textContent = pack.flashSubtext;
-    document.getElementById('btn-close-policy-flash').textContent = pack.btnContinue;
-    document.getElementById('btn-return-lobby').textContent = pack.btnReturnLobby;
+    setTxt('lbl-reveal-ribbon', pack.revealRibbon);
+    setTxt('lbl-reveal-title', pack.revealTitle);
+    setTxt('reveal-card-instructions', pack.revealInstructions);
+    setTxt('btn-close-role-reveal', pack.btnContinueGame);
+    
+    setTxt('lbl-action-ribbon', pack.actionRibbon);
+    setTxt('lbl-flash-stamp', pack.flashStamp);
+    setTxt('lbl-flash-subtext', pack.flashSubtext);
+    setTxt('btn-close-policy-flash', pack.btnContinue);
+    setTxt('btn-return-lobby', pack.btnReturnLobby);
     
     if (lastSavedState) {
-        // Force fully translated UI re-render tracking vectors instantly
-        socket.emit('castVote', { roomCode: null, dummy: true }); // Triggers a micro state loop update safely
+        socket.emit('castVote', { roomCode: null, dummy: true }); 
     }
 }
 
@@ -243,6 +309,12 @@ function getLocalizedParty(partyName) {
     return partyName;
 }
 
+function syncRoomCodeText(code) {
+    document.querySelectorAll('.display-code-global').forEach(el => {
+        el.textContent = code;
+    });
+}
+
 socket.on('roomCreated', (code) => {
     currentRoomCode = code;
     syncRoomCodeText(code);
@@ -251,7 +323,6 @@ socket.on('roomCreated', (code) => {
 });
 
 socket.on('gameStateUpdate', (state) => {
-    // Catch state bypass commands safely
     if (state.roomCode === null) return;
     
     currentRoomCode = state.roomCode;
