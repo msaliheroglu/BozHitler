@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Secret Hitler - Play Room</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -84,8 +84,20 @@
             </div>
 
             <div class="seating-chart">
-                <h3>Player Turn Seating (Rotates Top to Bottom)</h3>
-                <div id="game-players-list" class="players-vertical-list"></div>
+                <h3>Seating Chart & Live Registry</h3>
+                <div id="game-players-list" class="players-card-grid-deck"></div>
+            </div>
+        </div>
+
+        <div id="role-reveal-overlay" class="modal-overlay hidden">
+            <div class="modal-card-box role-reveal-box animate-pop">
+                <div class="modal-header-ribbon" style="background: #000; color: #ff3d00; border-bottom: 2px solid #ff3d00;">CLASSIFIED BRIEFING</div>
+                <div class="modal-inner-content">
+                    <h3 style="font-family:'Cinzel', serif; letter-spacing: 2px; margin-top:0;">YOUR SECRET IDENTITY</h3>
+                    <div id="reveal-card-visual" class="reveal-identity-banner">UNKNOWN</div>
+                    <p id="reveal-card-instructions" style="color: #b0bec5; font-size: 1.1rem; margin-bottom: 25px;">Keep your identity hidden from the rest of the table.</p>
+                    <button id="btn-close-role-reveal" class="btn success-btn" style="width:100%;">Continue to Game</button>
+                </div>
             </div>
         </div>
 
@@ -96,6 +108,14 @@
                     <p id="action-prompt">Choose an option to proceed:</p>
                     <div id="interactive-controls" class="button-row"></div>
                 </div>
+            </div>
+        </div>
+
+        <div id="policy-animation-overlay" class="full-screen-flash-overlay hidden">
+            <div class="flash-banner-content animate-pop">
+                <div id="flash-policy-stamp" class="stamp-badge">LAW ENACTED</div>
+                <h2 id="flash-policy-title" class="flash-title">LIBERAL POLICY</h2>
+                <p style="color:#fff; font-size:1.2rem; letter-spacing:1px; margin:0;">The country moves closer to its conclusion...</p>
             </div>
         </div>
 

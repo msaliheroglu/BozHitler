@@ -9,24 +9,25 @@ body {
     align-items: center;
     min-height: 100vh;
     margin: 0;
-    padding: 10px;
+    padding: 8px;
+    box-sizing: border-box;
     user-select: none;
 }
 
 #game-container {
     background: #3a221d;
-    padding: 20px;
-    border-radius: 20px;
+    padding: 15px;
+    border-radius: 16px;
     width: 100%;
-    max-width: 850px;
+    max-width: 820px;
     box-shadow: 0 22px 50px rgba(0,0,0,0.8), inset 0 0 30px rgba(0,0,0,0.6);
-    border: 8px solid #57342c;
+    border: 6px solid #57342c;
     box-sizing: border-box;
 }
 
 .hidden { display: none !important; }
 
-/* CSS Animations */
+/* Motion Keyframes */
 .animate-fade { animation: fadeIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; }
 .animate-pop { animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
 
@@ -35,28 +36,32 @@ body {
     to { opacity: 1; transform: translateY(0); }
 }
 @keyframes popIn {
-    from { opacity: 0; transform: scale(0.9); }
+    from { opacity: 0; transform: scale(0.92); }
     to { opacity: 1; transform: scale(1); }
 }
 @keyframes governmentGlow {
-    0% { border-color: #d84315; box-shadow: 0 0 5px #d84315; }
-    50% { border-color: #ffb300; box-shadow: 0 0 20px #ffb300; }
-    100% { border-color: #d84315; box-shadow: 0 0 5px #d84315; }
+    0% { border-color: #d84315; box-shadow: 0 0 4px #d84315; }
+    50% { border-color: #ffb300; box-shadow: 0 0 15px #ffb300; }
+    100% { border-color: #d84315; box-shadow: 0 0 4px #d84315; }
 }
 @keyframes targetDangerPulse {
-    0% { border-color: #ff3d00; background: rgba(255, 61, 0, 0.15); box-shadow: inset 0 0 10px rgba(255,61,0,0.4); }
-    50% { border-color: #ff9100; background: rgba(255, 61, 0, 0.3); box-shadow: inset 0 0 18px rgba(255,61,0,0.6), 0 0 8px rgba(255,61,0,0.3); }
-    100% { border-color: #ff3d00; background: rgba(255, 61, 0, 0.15); box-shadow: inset 0 0 10px rgba(255,61,0,0.4); }
+    0% { border-color: #ff3d00; background: rgba(255, 61, 0, 0.15); }
+    50% { border-color: #ff9100; background: rgba(255, 61, 0, 0.3); }
+    100% { border-color: #ff3d00; background: rgba(255, 61, 0, 0.1); }
 }
 @keyframes electionPurplePulse {
-    0% { border-color: #9c27b0; background: rgba(156, 39, 176, 0.15); box-shadow: inset 0 0 10px rgba(156,39,176,0.4); }
-    50% { border-color: #ba68c8; background: rgba(156, 39, 176, 0.3); box-shadow: inset 0 0 18px rgba(156,39,176,0.6), 0 0 8px rgba(156,39,176,0.3); }
-    100% { border-color: #9c27b0; background: rgba(156, 39, 176, 0.15); box-shadow: inset 0 0 10px rgba(156,39,176,0.4); }
+    0% { border-color: #9c27b0; background: rgba(156, 39, 176, 0.15); }
+    50% { border-color: #ba68c8; background: rgba(156, 39, 176, 0.3); }
+    100% { border-color: #9c27b0; background: rgba(156, 39, 176, 0.15); }
 }
-@keyframes trackerActivePulse {
-    0% { background: #ffcc00; box-shadow: 0 0 2px #ffcc00; }
-    50% { background: #ff6600; box-shadow: 0 0 15px #ff6600; }
-    100% { background: #ffcc00; box-shadow: 0 0 2px #ffcc00; }
+@keyframes miniTrackerPulse {
+    0% { background: #ff9100; transform: scale(1); }
+    50% { background: #ff3d00; transform: scale(1.15); box-shadow: 0 0 8px #ff3d00; }
+    100% { background: #ff9100; transform: scale(1); }
+}
+@keyframes bannerSlideIn {
+    0% { transform: scale(0.85) translateY(-30px); opacity: 0; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
 }
 
 .game-logo {
@@ -64,14 +69,15 @@ body {
     font-weight: 900;
     color: #ff3d00;
     text-shadow: 3px 4px 0px #1a0500, 0 10px 20px rgba(0,0,0,0.6);
-    font-size: 3.5rem;
-    letter-spacing: 4px;
-    margin-bottom: 25px;
+    font-size: 3rem;
+    letter-spacing: 3px;
+    margin-bottom: 20px;
+    text-align: center;
 }
 
 .menu-box, .lobby-box {
     background: rgba(15, 8, 7, 0.6);
-    padding: 30px;
+    padding: 20px;
     border-radius: 12px;
     border: 2px solid #57342c;
     box-shadow: inset 0 4px 20px rgba(0,0,0,0.5);
@@ -80,201 +86,169 @@ body {
 #player-list {
     list-style: none;
     padding: 0;
-    margin: 20px 0;
-    text-align: left;
+    margin: 15px 0;
 }
 #player-list li {
     background: #2b1714;
-    padding: 12px 20px;
-    margin: 8px 0;
+    padding: 10px 15px;
+    margin: 6px 0;
     border-radius: 6px;
     border-left: 5px solid #ff3d00;
-    font-size: 1.2rem;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+    font-size: 1.1rem;
 }
 
 input[type="text"] {
-    width: 85%;
+    width: 100%;
     max-width: 320px;
-    padding: 14px;
+    padding: 12px;
     margin: 12px auto;
     display: block;
     background: #120706;
     border: 2px solid #74453b;
     border-radius: 8px;
     color: #fff;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     text-align: center;
+    box-sizing: border-box;
 }
 
+.divider { margin: 15px 0; color: #a67c74; font-weight: bold; text-align: center; }
+
 .btn {
-    padding: 14px 32px;
-    font-size: 1.15rem;
+    padding: 12px 24px;
+    font-size: 1.1rem;
     font-weight: 600;
     text-transform: uppercase;
-    border-radius: 8px;
+    border-radius: 6px;
     cursor: pointer;
     border: none;
-    transition: all 0.2s ease-in-out;
-    box-shadow: 0 5px 10px rgba(0,0,0,0.4);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+    transition: all 0.2s ease;
 }
-.btn:hover { transform: translateY(-3px); box-shadow: 0 8px 16px rgba(0,0,0,0.5); }
+.btn:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.5); }
+.btn:active { transform: translateY(0); }
 
 .wood-btn.primary { background: linear-gradient(to bottom, #d32f2f, #9a0007); color: white; }
 .wood-btn.secondary { background: linear-gradient(to bottom, #4e342e, #260e04); color: #f7f1e3; border: 1px solid #795548; }
 .success-btn { background: linear-gradient(to bottom, #388e3c, #1b5e20); color: white; }
 .control-btn { background: linear-gradient(to bottom, #f57c00, #e65100); color: white; }
 
-.lobby-controls { display: flex; justify-content: center; gap: 15px; margin-top: 20px; flex-wrap: wrap; }
+.lobby-controls { display: flex; justify-content: center; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
 
-/* Stats Bar Configuration */
+/* Dashboard Panel Line */
 .compact-stats-bar {
     display: flex;
     justify-content: space-between;
     align-items: center;
     background: #1e0f0d;
     border: 2px solid #57342c;
-    border-radius: 10px;
-    padding: 8px 20px;
-    margin: 15px 0;
-    box-shadow: inset 0 2px 10px rgba(0,0,0,0.6);
+    border-radius: 8px;
+    padding: 6px 15px;
+    margin: 10px 0;
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);
 }
 
 .mini-stat-node {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     background: rgba(0,0,0,0.2);
-    padding: 4px 12px;
-    border-radius: 6px;
+    padding: 3px 10px;
+    border-radius: 5px;
     border: 1px solid #3d211c;
 }
 
-.stat-label {
-    font-size: 0.8rem;
-    font-weight: bold;
-    letter-spacing: 1px;
-    color: #cca59e;
-}
-
-.stat-val {
-    font-size: 1.4rem;
-    font-weight: bold;
-    color: #fff;
-    text-shadow: 1px 1px 2px #000;
-}
-
+.stat-label { font-size: 0.75rem; font-weight: bold; letter-spacing: 0.5px; color: #cca59e; }
+.stat-val { font-size: 1.2rem; font-weight: bold; color: #fff; }
 .draw-node { border-left: 3px solid #ff4500; }
 .discard-node { border-left: 3px solid #78909c; }
 
-.mini-chaos-tracker { display: flex; align-items: center; gap: 12px; }
-.mini-tracker-dots { display: flex; gap: 6px; }
+.mini-chaos-tracker { display: flex; align-items: center; gap: 8px; }
+.mini-tracker-dots { display: flex; gap: 4px; }
 
 .mini-dot {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     background: #3a1a16;
     border: 1px solid #5e2a22;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: bold;
-    line-height: 22px;
+    line-height: 18px;
     color: #7d443c;
     text-align: center;
-    transition: all 0.3s ease;
 }
-.mini-dot.active-tracker-point {
-    color: #fff;
-    border-color: #fff;
-    animation: miniTrackerPulse 1.5s infinite ease-in-out;
-}
+.mini-dot.active-tracker-point { color: #fff; border-color: #fff; animation: miniTrackerPulse 1.5s infinite ease-in-out; }
 .mini-dot.mini-danger { border-color: #b71c1c; color: #b71c1c; }
 .mini-dot.mini-danger.active-tracker-point { background: #b71c1c; animation: miniTrackerPulse 0.8s infinite ease-in-out; }
 
-/* Immersive Poker Felt Architecture */
+/* Felt Architecture Layout Changes (Shifting Heights Down) */
 .board-table-felt { 
     background: #0f2316; 
-    border: 10px solid #271410; 
-    border-radius: 14px; 
-    padding: 25px; 
-    margin: 20px 0; 
-    box-shadow: inset 0 0 40px rgba(0,0,0,0.9); 
+    border: 6px solid #271410; 
+    border-radius: 12px; 
+    padding: 10px 15px; 
+    margin: 10px 0; 
+    box-shadow: inset 0 0 30px rgba(0,0,0,0.9); 
 }
-.visual-board { margin-bottom: 20px; padding: 15px; border-radius: 8px; }
-.liberal-board { background: rgba(13, 71, 161, 0.2); border: 2px solid #0d47a1; }
-.fascist-board { background: rgba(183, 28, 28, 0.2); border: 2px solid #b71c1c; }
-.board-title { font-family: 'Cinzel', serif; font-size: 1.3rem; font-weight: 700; letter-spacing: 3px; margin-bottom: 15px; text-align: center; }
+.visual-board { margin-bottom: 8px; padding: 8px 12px; border-radius: 6px; }
+.visual-board:last-child { margin-bottom: 0; }
+.liberal-board { background: rgba(13, 71, 161, 0.15); border: 2px solid #0d47a1; }
+.fascist-board { background: rgba(183, 28, 28, 0.15); border: 2px solid #b71c1c; }
+.board-title { font-family: 'Cinzel', serif; font-size: 1.1rem; font-weight: 700; letter-spacing: 2px; margin-bottom: 8px; text-align: center; }
 
-/* ==========================================================================
-   SHORTER PREMIUM SQUARE TILE TRACK ENGINE
-   ========================================================================== */
-.track-slots { 
-    display: flex; 
-    justify-content: center; 
-    gap: 12px; 
-}
+.track-slots { display: flex; justify-content: center; gap: 8px; }
 
+/* Shrunk Square Track Tokens Look Layout */
 .slot { 
-    width: 58px; 
-    height: 58px; /* Perfectly square aspect ratio cuts vertical height */
+    width: 44px; 
+    height: 44px; 
     border: 2px solid #4a312a; 
     border-radius: 6px; 
     display: flex; 
     align-items: center; 
     justify-content: center; 
-    font-size: 1.15rem; 
+    font-size: 1rem; 
     font-weight: bold; 
     color: #795548; 
     background: linear-gradient(135deg, #120705 0%, #1d100c 100%); 
-    box-shadow: inset 0 4px 10px rgba(0,0,0,0.8);
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
+    box-shadow: inset 0 3px 6px rgba(0,0,0,0.8);
 }
 
-/* Enacted Law Tiles: Rich metallic styling with inner text lighting */
 .slot.filled-Liberal { 
     background: linear-gradient(135deg, #1e88e5 0%, #0d47a1 100%); 
     border: 2px solid #fff; 
-    color: #ffca28; /* Gold Star */
-    font-size: 1.6rem;
-    transform: scale(1.03); 
-    box-shadow: 0 6px 12px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.4);
-    text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+    color: #ffca28; 
+    font-size: 1.3rem;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.5), inset 0 1px 3px rgba(255,255,255,0.4);
 }
 .slot.filled-Fascist { 
     background: linear-gradient(135deg, #e53935 0%, #b71c1c 100%); 
     border: 2px solid #fff; 
-    color: #ffca28; /* Gold Star */
-    font-size: 1.6rem;
-    transform: scale(1.03); 
-    box-shadow: 0 6px 12px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.4);
-    text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+    color: #ffca28; 
+    font-size: 1.3rem;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.5), inset 0 1px 3px rgba(255,255,255,0.4);
 }
 
-/* Graphic Supported Capabilities Slots */
-.slot.power-investigate { border-color: #ffb300; color: #ffb300; background: radial-gradient(circle, rgba(255, 179, 0, 0.15) 0%, rgba(18,7,5,0.6) 100%); font-size: 1.4rem; }
-.slot.power-peek { border-color: #03a9f4; color: #03a9f4; background: radial-gradient(circle, rgba(3, 169, 244, 0.15) 0%, rgba(18,7,5,0.6) 100%); font-size: 1.4rem; }
-.slot.power-election { border-color: #e040fb; color: #e040fb; background: radial-gradient(circle, rgba(224, 64, 251, 0.15) 0%, rgba(18,7,5,0.6) 100%); font-size: 1.4rem; animation: electionPurplePulse 3s infinite ease-in-out; }
-.slot.power-execution { border-color: #ff3d00; color: #ff3d00; background: radial-gradient(circle, rgba(255, 61, 0, 0.15) 0%, rgba(18,7,5,0.6) 100%); font-size: 1.4rem; animation: targetDangerPulse 3s infinite ease-in-out; }
+.slot.power-investigate { border-color: #ffb300; color: #ffb300; background: rgba(255,179,0,0.06); }
+.slot.power-peek { border-color: #03a9f4; color: #03a9f4; background: rgba(3,169,244,0.06); }
+.slot.power-election { border-color: #e040fb; color: #e040fb; animation: electionPurplePulse 3s infinite ease-in-out; }
+.slot.power-execution { border-color: #ff3d00; color: #ff3d00; animation: targetDangerPulse 3s infinite ease-in-out; }
 
-/* Decision Overlays */
+/* Interactive Overlays Modals */
 .modal-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
+    top: 0; left: 0; width: 100vw; height: 100vh;
     background: rgba(0, 0, 0, 0.85);
     backdrop-filter: blur(5px);
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    display: flex; justify-content: center; align-items: center;
     z-index: 9999;
 }
 
 .modal-card-box {
     background: #2c1410;
-    width: 90%;
-    max-width: 550px;
+    width: 92%;
+    max-width: 520px;
     border-radius: 12px;
     border: 4px solid #57342c;
     box-shadow: 0 20px 60px rgba(0,0,0,0.9);
@@ -283,103 +257,179 @@ input[type="text"] {
 
 .modal-header-ribbon {
     background: linear-gradient(to right, #b71c1c, #d32f2f, #b71c1c);
-    color: #fff;
-    font-size: 1.2rem;
-    font-weight: bold;
-    letter-spacing: 2px;
-    padding: 10px;
-    text-align: center;
-    text-transform: uppercase;
+    color: #fff; font-size: 1.1rem; font-weight: bold; letter-spacing: 2px;
+    padding: 10px; text-align: center; text-transform: uppercase;
 }
 
-.modal-inner-content { padding: 25px 20px; text-align: center; }
-#action-prompt { font-size: 1.3rem; color: #ffb300; margin-bottom: 20px; line-height: 1.5; }
+.modal-inner-content { padding: 20px 15px; text-align: center; }
 
-.policy-card { display: inline-block; width: 90px; height: 135px; margin: 12px; border-radius: 10px; line-height: 135px; font-size: 1.3rem; font-weight: bold; color: white; cursor: pointer; box-shadow: 0 8px 16px rgba(0,0,0,0.6); border: 4px solid #fff; text-align: center;}
-.policy-card:hover { transform: translateY(-10px) scale(1.05); }
+/* 2. Interactive Selection Confirmation Styling states */
+.policy-card { 
+    display: inline-block; width: 85px; height: 125px; margin: 8px; 
+    border-radius: 8px; line-height: 125px; font-size: 1.15rem; font-weight: bold; 
+    color: white; cursor: pointer; box-shadow: 0 6px 12px rgba(0,0,0,0.5); 
+    border: 3px solid #fff; text-align: center;
+    transition: all 0.2s ease-in-out;
+}
+.policy-card:hover { transform: translateY(-4px); }
+.policy-card.selected-target-card {
+    border-color: #ffca28 !important;
+    box-shadow: 0 0 20px #ffca28, 0 8px 16px rgba(0,0,0,0.6);
+    transform: scale(1.05) translateY(-6px);
+}
 .card-Liberal { background: radial-gradient(circle, #2196f3 0%, #0d47a1 100%); }
 .card-Fascist { background: radial-gradient(circle, #f44336 0%, #b71c1c 100%); }
 
-.passive-status-panel { background: #23120f; border-left: 5px solid #2196f3; padding: 12px 20px; border-radius: 6px; margin-bottom: 20px; text-align: left; }
-#passive-prompt-text { font-size: 1.1rem; color: #b0bec5; margin: 0; }
+.passive-status-panel { background: #23120f; border-left: 4px solid #2196f3; padding: 10px 15px; border-radius: 6px; margin-bottom: 12px; }
+#passive-prompt-text { font-size: 1rem; color: #b0bec5; margin: 0; }
 
-.seating-chart { background: rgba(15, 8, 7, 0.7); padding: 20px; border-radius: 12px; border: 2px solid #57342c; }
-.seating-chart h3 { border-bottom: 2px solid #57342c; padding-bottom: 8px; margin-bottom: 15px; text-align: center; color: #cca59e; }
+.seating-chart { background: rgba(15, 8, 7, 0.5); padding: 12px; border-radius: 10px; border: 2px solid #57342c; }
+.seating-chart h3 { font-size: 1.1rem; border-bottom: 2px solid #57342c; padding-bottom: 6px; margin: 0 0 12px 0; text-align: center; color: #cca59e; }
 
-.player-row-card { display: flex; justify-content: space-between; align-items: center; background: #23120f; padding: 12px 20px; margin: 8px 0; border-radius: 8px; border: 2px solid transparent; }
-.player-row-card.active-gov { animation: governmentGlow 2.5s infinite; }
+/* ==========================================================================
+   5. TACTILE CARD DECK GRID ARRANGEMENT
+   ========================================================================== */
+.players-card-grid-deck {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+    gap: 10px;
+    width: 100%;
+}
 
-.player-row-card.dead-player { background: #1c110f !important; opacity: 0.45; text-decoration: line-through; border-left: 4px solid #616161 !important; }
-.player-row-card.disconnected-player { background: #1b1615 !important; border-left: 4px dashed #78909c !important; opacity: 0.6; }
+.player-card {
+    background: linear-gradient(135deg, #2a1512 0%, #1a0a08 100%);
+    border: 2px solid #4e322e;
+    border-radius: 8px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    text-align: center;
+    min-height: 95px;
+    box-sizing: border-box;
+}
 
-.badge-tag { font-size: 0.85rem; font-weight: bold; padding: 4px 10px; border-radius: 4px; margin-left: 6px; }
+.player-card.active-gov { animation: governmentGlow 2s infinite; border-width: 2px; }
+.player-card.dead-player { background: #140d0c !important; border-color: #333 !important; opacity: 0.4; }
+.player-card.dead-player .player-card-name { text-decoration: line-through; color: #777; }
+.player-card.disconnected-player { background: #181312 !important; border-style: dashed !important; border-color: #607d8b !important; }
+
+.player-card-name { font-size: 1.05rem; font-weight: 600; color: #fff; margin-bottom: 6px; word-break: break-all; width: 100%; }
+.player-card-badges-container { display: flex; flex-direction: column; gap: 4px; width: 100%; align-items: center; }
+
+/* Role Reveal Box styling inside cards */
+.player-card-role-block {
+    font-size: 0.8rem; font-weight: bold; letter-spacing: 0.5px;
+    padding: 2px 6px; border-radius: 4px; width: 85%; margin-top: 5px;
+}
+.role-block-liberal { background: #0d47a1; color: #fff; border: 1px solid #1e88e5; }
+.role-block-fascist { background: #b71c1c; color: #fff; border: 1px solid #e53935; }
+.role-block-hitler { background: #000; color: #ff3d00; border: 1px solid #ff3d00; }
+.role-block-bozbey { background: #4a148c; color: #e040fb; border: 1px solid #ba68c8; }
+
+/* 5. Integrated Live Ballots Section */
+.card-live-ballot-stamp {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%) rotate(-12deg);
+    font-family: 'Cinzel', serif; font-weight: 900; font-size: 1.5rem;
+    padding: 2px 10px; border-radius: 6px; width: 75%;
+    text-align: center; z-index: 10; opacity: 0.9;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+.stamp-ja { background: #2e7d32; color: #fff; border: 3px double #fff; }
+.stamp-nein { background: #c62828; color: #fff; border: 3px double #fff; }
+
+.badge-tag { font-size: 0.75rem; font-weight: bold; padding: 2px 6px; border-radius: 3px; display: inline-block; text-align: center; width: 85%; box-sizing: border-box; }
 .badge-tag.pres { background: #ffb300; color: #000; }
 .badge-tag.chan { background: #ff3d00; color: #fff; }
-.badge-tag.voted { background: #4caf50; color: #fff; }
-.badge-tag.team-fascist { background: #b71c1c; color: #fff; }
-.badge-tag.team-hitler { background: #000000; color: #ff3d00; border: 1px solid #ff3d00; }
+.badge-tag.voted { background: #4caf50; color: #fff; width: auto; padding: 1px 6px; font-size: 0.7rem; }
 .badge-tag.offline { background: #546e7a; color: #fff; }
-.badge-tag.intel-report { background: linear-gradient(135deg, #6a1b9a 0%, #4a148c 100%); color: #fff; border: 1px solid #ba68c8; }
+.badge-tag.intel-report { background: #4a148c; color: #fff; border: 1px solid #ba68c8; font-size: 0.7rem; white-space: normal; line-height: 1.1; }
 
-.secret-role-card { background: #120706; padding: 10px 20px; border-radius: 6px; border: 2px solid #ff3d00; font-size: 1.1rem; font-weight: bold; }
-.phase-display { font-size: 1.2rem; font-weight: bold; color: #ffb300; letter-spacing: 1px; }
-.game-top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-
-.bozbey-rule-card { background: linear-gradient(135deg, #2c120f 0%, #150604 100%); border: 2px solid #7e57c2; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: center; align-items: center; box-shadow: 0 4px 15px rgba(126, 87, 194, 0.2); }
-.checkbox-label { display: flex; align-items: center; gap: 12px; cursor: pointer; font-size: 1.3rem; font-weight: 500; }
-.checkbox-label input[type="checkbox"] { width: 22px; height: 22px; cursor: pointer; accent-color: #7e57c2; }
-.custom-chk-text { color: #b39ddb; letter-spacing: 1px; text-shadow: 1px 1px 2px #000; }
-.checkbox-label input[type="checkbox"]:disabled + .custom-chk-text { color: #5d4d57; cursor: not-allowed; }
-
-/* Responsive Mobile Rules overrides */
-@media (max-width: 600px) {
-    .compact-stats-bar { padding: 6px 12px; }
-    .stat-label { font-size: 0.7rem; }
-    .stat-val { font-size: 1.1rem; }
-    .mini-dot { width: 20px; height: 20px; font-size: 0.65rem; line-height: 18px; }
-    .track-slots { gap: 6px; }
-    
-    /* Responsive Square layout parameters */
-    .slot { width: 42px; height: 42px; font-size: 0.95rem; border-radius: 4px; }
-    .slot.filled-Liberal, .slot.filled-Fascist { font-size: 1.2rem; }
-    
-    .policy-card { width: 70px; height: 105px; line-height: 105px; font-size: 1rem; }
-    .btn { padding: 12px 20px; font-size: 1rem; width: 100%; }
-    .lobby-controls { flex-direction: column; }
+/* 1. Large Briefing identity visual display block */
+.reveal-identity-banner {
+    font-family: 'Cinzel', serif; font-size: 2.2rem; font-weight: 900;
+    padding: 20px; border-radius: 8px; margin: 15px 0; text-shadow: 2px 3px 6px #000;
 }
+.identity-liberal { background: radial-gradient(circle, #2196f3 0%, #0d47a1 100%); color: #fff; }
+.identity-fascist { background: radial-gradient(circle, #f44336 0%, #b71c1c 100%); color: #fff; }
+.identity-hitler { background: #000; color: #ff3d00; border: 2px solid #ff3d00; }
+.identity-bozbey { background: radial-gradient(circle, #aa00ff 0%, #4a148c 100%); color: #e040fb; }
+
 /* ==========================================================================
-   LEGALLY AUTHORITATIVE ATTRIBUTION FOOTER STYLING
+   3. FULL-SCREEN LAW ENACTMENT FLASH OVERLAY
    ========================================================================== */
-.legal-credits-attribution {
-    margin-top: 30px;
-    padding-top: 15px;
-    border-top: 2px solid #57342c;
-    font-size: 0.75rem;
-    color: #a67c74;
-    text-align: center;
-    line-height: 1.6;
-    letter-spacing: 0.5px;
+.full-screen-flash-overlay {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0, 0, 0, 0.95); z-index: 100000;
+    display: flex; justify-content: center; align-items: center;
 }
-
-.legal-credits-attribution p {
-    margin: 4px 0;
+.flash-banner-content { text-align: center; padding: 30px; animation: bannerSlideIn 0.5s ease-out forwards; }
+.stamp-badge {
+    font-family: 'Cinzel', serif; font-size: 1.1rem; font-weight: bold;
+    color: #ffb300; border: 2px solid #ffb300; padding: 4px 14px;
+    display: inline-block; margin-bottom: 15px; letter-spacing: 3px;
 }
-
-.legal-credits-attribution a {
-    color: #ff3d00;
-    text-decoration: none;
-    font-weight: 600;
-    transition: color 0.2s ease;
+.flash-title {
+    font-family: 'Cinzel', serif; font-size: 3.5rem; font-weight: 900;
+    margin: 0 0 15px 0; text-shadow: 0 4px 15px rgba(0,0,0,0.8); letter-spacing: 2px;
 }
+.flash-liberal-theme .flash-title { color: #2196f3; }
+.flash-fascist-theme .flash-title { color: #ff3d00; }
 
-.legal-credits-attribution a:hover {
-    color: #ff9100;
-    text-decoration: underline;
-}
+.secret-role-card { background: #120706; padding: 6px 14px; border-radius: 6px; border: 2px solid #ff3d00; font-size: 1rem; font-weight: bold; }
+.phase-display { font-size: 1.05rem; font-weight: bold; color: #ffb300; letter-spacing: 0.5px; }
+.game-top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 
+.bozbey-rule-card { background: linear-gradient(135deg, #2c120f 0%, #150604 100%); border: 2px solid #7e57c2; padding: 10px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: center; align-items: center; }
+.checkbox-label { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 1.15rem; }
+.checkbox-label input[type="checkbox"] { width: 18px; height: 18px; accent-color: #7e57c2; }
+.custom-chk-text { color: #b39ddb; }
+
+.victory-banner { font-family: 'Cinzel', serif; color: #ff3d00; font-size: 2.2rem; }
+.victory-subtext { font-size: 1.15rem; color: #ffb300; margin-bottom: 20px; }
+
+.legal-credits-attribution { margin-top: 20px; padding-top: 10px; border-top: 2px solid #57342c; font-size: 0.7rem; color: #a67c74; text-align: center; }
+.legal-credits-attribution p { margin: 3px 0; }
+.legal-credits-attribution a { color: #ff3d00; text-decoration: none; font-weight: 600; }
+
+/* ==========================================================================
+   4. MAXIMUM MOBILE VIEWPORT OPTIMIZATION
+   ========================================================================== */
 @media (max-width: 600px) {
-    .legal-credits-attribution {
-        font-size: 0.7rem;
-        margin-top: 20px;
+    body { padding: 4px; }
+    #game-container { padding: 8px; border-width: 4px; border-radius: 12px; }
+    .game-logo { font-size: 1.8rem; }
+    
+    /* Forces Grid Deck items into crisp, double columns to fit mobile screen heights */
+    .players-card-grid-deck {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
     }
+    .player-card { min-height: 80px; padding: 6px; }
+    .player-card-name { font-size: 0.95rem; margin-bottom: 3px; }
+    .badge-tag { font-size: 0.7rem; padding: 1px 4px; }
+    .player-card-role-block { font-size: 0.75rem; padding: 1px 4px; }
+    .card-live-ballot-stamp { font-size: 1.1rem; }
+
+    .compact-stats-bar { padding: 4px 8px; margin-bottom: 8px; }
+    .stat-val { font-size: 1rem; }
+    .mini-dot { width: 16px; height: 16px; font-size: 0.6rem; line-height: 14px; }
+    
+    .board-table-felt { padding: 6px; margin: 8px 0; }
+    .board-title { font-size: 0.95rem; margin-bottom: 4px; }
+    .track-slots { gap: 4px; }
+    .slot { width: 32px; height: 32px; font-size: 0.8rem; border-radius: 4px; }
+    .slot.filled-Liberal, .slot.filled-Fascist { font-size: 1rem; }
+
+    .policy-card { width: 65px; height: 100px; line-height: 100px; font-size: 0.9rem; margin: 4px; }
+    .flash-title { font-size: 2.2rem; }
+    
+    .btn { padding: 10px 16px; font-size: 0.95rem; width: 100%; }
+    .lobby-controls { flex-direction: column; gap: 6px; }
 }

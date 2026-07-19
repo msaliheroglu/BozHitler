@@ -1,6 +1,11 @@
 const socket = io();
 let currentRoomCode = null, myId = null;
 
+// Local tracking flags to trigger animations and initial reveals
+let localRoleBriefingSeen = false;
+let recordedLiberalLaws = 0;
+let recordedFascistLaws = 0;
+
 const setupScreen = document.getElementById('setup-screen');
 const lobbyScreen = document.getElementById('lobby-screen');
 const gameScreen = document.getElementById('game-screen');
@@ -12,6 +17,15 @@ const chkBozbey = document.getElementById('chk-bozbey');
 
 const actionModalOverlay = document.getElementById('action-modal-overlay');
 const passivePromptText = document.getElementById('passive-prompt-text');
+
+// 1. New Modal Element Triggers
+const roleRevealOverlay = document.getElementById('role-reveal-overlay');
+const revealCardVisual = document.getElementById('reveal-card-visual');
+const btnCloseRoleReveal = document.getElementById('btn-close-role-reveal');
+
+// 3. Animation Elements Selector References
+const policyAnimationOverlay = document.getElementById('policy-animation-overlay');
+const flashPolicyTitle = document.getElementById('flash-policy-title');
 
 socket.on('connect', () => { myId = socket.id; });
 socket.on('errorMsg', alert);
@@ -49,6 +63,11 @@ chkBozbey.onchange = () => {
     }
 };
 
+// 1. Closes initialization pop-up window cleanly
+btnCloseRoleReveal.onclick = () => {
+    roleRevealOverlay.classList.add('hidden');
+};
+
 socket.on('roomCreated', (code) => {
     currentRoomCode = code;
     document.getElementById('display-code').textContent = code;
@@ -60,9 +79,16 @@ socket.on('gameStateUpdate', (state) => {
     currentRoomCode = state.roomCode;
     
     if (state.status === 'LOBBY') {
+        // Reset tracking states cleanly upon returning to lobby
+        localRoleBriefingSeen = false;
+        recordedLiberalLaws = 0;
+        recordedFascistLaws = 0;
+
         setupScreen.classList.add('hidden');
         lobbyScreen.classList.remove('hidden');
+        gameScreen.classList.add('hidden');
         document.getElementById('lobby-count').textContent = state.players.length;
+        
         chkBozbey.checked = state.bozbeyMode;
         const botCount = state.players.filter(p => p.id.startsWith('bot_')).length;
 
@@ -97,6 +123,25 @@ socket.on('gameStateUpdate', (state) => {
 
         updateChaosTracker(state.electionTracker);
 
+        // 3. Law Enactments Delta Interceptor Event Trigger Loop
+        if (recordedLiberalLaws > 0 && state.liberalPolicies > recordedLiberalLaws) {
+            triggerFlashOverlayAnimation('Liberal');
+        }
+        if (recordedFascistLaws > 0 && state.fascistPolicies > recordedFascistLaws) {
+            triggerFlashOverlayAnimation('Fascist');
+        }
+        // Commit fresh totals to sync memory benchmarks
+        recordedLiberalLaws = state.liberalPolicies;
+        recordedFascistLaws = state.fascistPolicies;
+
+        // 1. First-time Role Assignment Interception Popup Modal Generator
+        if (!localRoleBriefingSeen && state.yourRole) {
+            localRoleBriefingSeen = true;
+            revealCardVisual.className = `reveal-identity-banner identity-${state.yourRole}`;
+            revealCardVisual.textContent = state.yourRole.toUpperCase();
+            roleRevealOverlay.classList.remove('hidden');
+        }
+
         const badge = document.getElementById('role-badge');
         badge.textContent = `Secret Role: ${state.yourRole}`;
         if (state.yourRole === 'Bozbey') badge.style.color = '#e040fb'; 
@@ -107,36 +152,58 @@ socket.on('gameStateUpdate', (state) => {
         renderTrack('liberal-slots-track', state.liberalPolicies, 5, 'Liberal', state.players.length);
         renderTrack('fascist-slots-track', state.fascistPolicies, 6, 'Fascist', state.players.length);
         
+        // 5. Build Grid-Based Tactile Cards instead of standard rows
         const pList = document.getElementById('game-players-list');
         pList.innerHTML = '';
         state.players.forEach(p => {
-            const row = document.createElement('div');
-            row.className = `player-row-card ${p.isDead ? 'dead-player' : ''} ${p.isDisconnected ? 'disconnected-player' : ''} ${(p.isPresident || p.isChancellor) ? 'active-gov' : ''}`;
+            const card = document.createElement('div');
+            card.className = `player-card ${p.isDead ? 'dead-player' : ''} ${p.isDisconnected ? 'disconnected-player' : ''} ${(p.isPresident || p.isChancellor) ? 'active-gov' : ''}`;
             
-            let badges = '';
-            if(p.isPresident) badges += `<span class="badge-tag pres">PRESIDENT</span>`;
-            if(p.isChancellor) badges += `<span class="badge-tag chan">CHANCELLOR</span>`;
-            
-            if (p.voteValue !== undefined && p.voteValue !== null) {
-                if (p.voteValue === true) badges += `<span class="badge-tag" style="background:#2e7d32; color:#fff;">JA (YES)</span>`;
-                else badges += `<span class="badge-tag" style="background:#c62828; color:#fff;">NEIN (NO)</span>`;
-            } else if(p.hasVoted && !p.isDead && !p.isDisconnected) {
-                badges += `<span class="badge-tag voted">✓ VOTED</span>`;
-            }
+            // Name Header block
+            const nameSpan = document.createElement('div');
+            nameSpan.className = 'player-card-name';
+            nameSpan.innerHTML = `${p.name} ${p.id === myId ? '<strong style="color:#ffca28;">(You)</strong>' : ''}`;
+            card.appendChild(nameSpan);
 
-            if (p.isDead) badges += `<span class="badge-tag" style="background:#000;">☠ DEAD</span>`;
-            if (p.isDisconnected && !p.isDead) badges += `<span class="badge-tag offline">🔌 OFFLINE</span>`;
-            
+            // Badges list layer
+            const badgesContainer = document.createElement('div');
+            badgesContainer.className = 'player-card-badges-container';
+
+            if(p.isPresident) badgesContainer.innerHTML += `<span class="badge-tag pres">PRESIDENT</span>`;
+            if(p.isChancellor) badgesContainer.innerHTML += `<span class="badge-tag chan">CHANCELLOR</span>`;
+            if(p.hasVoted && state.phase !== 'VOTE_REVEAL' && !p.isDead && !p.isDisconnected) {
+                badgesContainer.innerHTML += `<span class="badge-tag voted">✓ VOTED</span>`;
+            }
+            if(p.isDisconnected && !p.isDead) badgesContainer.innerHTML += `<span class="badge-tag offline">🔌 OFFLINE</span>`;
+            if(p.isDead) badgesContainer.innerHTML += `<span class="badge-tag" style="background:#000; color:#fff;">☠ DECEASED</span>`;
+
+            // Teammate reveal tags integration
             if (p.revealedRole && !p.isDead) {
-                if (p.revealedRole === 'Fascist') badges += `<span class="badge-tag team-fascist">FASCIST</span>`;
-                if (p.revealedRole === 'Hitler') badges += `<span class="badge-tag team-hitler">HITLER</span>`;
-            }
-            if (p.investigatedParty && !p.isDead) {
-                badges += `<span class="badge-tag intel-report">🔍 DETECTED: ${p.investigatedParty}</span>`;
+                const roleTag = document.createElement('div');
+                roleTag.className = `player-card-role-block role-block-${p.revealedRole.toLowerCase()}`;
+                roleTag.textContent = p.revealedRole.toUpperCase();
+                badgesContainer.appendChild(roleTag);
             }
             
-            row.innerHTML = `<span>${p.name} ${p.id === myId ? '<strong>(You)</strong>' : ''}</span> <div>${badges}</div>`;
-            pList.appendChild(row);
+            if (p.investigatedParty && !p.isDead) {
+                badgesContainer.innerHTML += `<span class="badge-tag intel-report">🔍 PARTY: ${p.investigatedParty}</span>`;
+            }
+            card.appendChild(badgesContainer);
+
+            // 5. Absolute positioning ballot stamps overlay loop injection during reveals
+            if (state.phase === 'VOTE_REVEAL' && p.voteValue !== undefined && p.voteValue !== null) {
+                const stamp = document.createElement('div');
+                if (p.voteValue === true) {
+                    stamp.className = 'card-live-ballot-stamp stamp-ja';
+                    stamp.textContent = 'JA!';
+                } else {
+                    stamp.className = 'card-live-ballot-stamp stamp-nein';
+                    stamp.textContent = 'NEIN';
+                }
+                card.appendChild(stamp);
+            }
+            
+            pList.appendChild(card);
         });
 
         renderControls(state);
@@ -149,6 +216,17 @@ socket.on('gameStateUpdate', (state) => {
         document.getElementById('victory-reason').textContent = state.winner;
     }
 });
+
+// 3. Invokes the full screen Law deployment banner
+function triggerFlashOverlayAnimation(factionType) {
+    policyAnimationOverlay.className = `full-screen-flash-overlay flash-${factionType.toLowerCase()}-theme`;
+    flashPolicyTitle.textContent = `${factionType.toUpperCase()} POLICY`;
+    policyAnimationOverlay.classList.remove('hidden');
+
+    setTimeout(() => {
+        policyAnimationOverlay.classList.add('hidden');
+    }, 2500); // Display alert for 2.5 seconds
+}
 
 function updateChaosTracker(failCount) {
     for (let i = 1; i <= 3; i++) {
@@ -257,59 +335,113 @@ function renderControls(state) {
     else if (state.phase === 'VOTE_REVEAL') {
         fallbackStatusText = "ELECTION BALLOT SUMMARY: Revealing votes cast by all players...";
     }
+    // 2. Multi-Step Selection-Then-Confirmation workflow handler for the President
     else if (state.phase === 'LEGISLATIVE_PRESIDENT') {
         if (amIPresident) {
             isMyActionTurn = true;
-            prompt.textContent = "Presidential Action: Select ONE policy card to DISCARD into the ash heap:";
-            state.drawnCards.forEach((card, idx) => {
-                const div = document.createElement('div');
-                div.className = `policy-card card-${card} animate-pop`;
-                div.textContent = card;
-                div.onclick = () => {
-                    const keep = [0,1,2].filter(i => i !== idx);
-                    socket.emit('presidentDiscard', { roomCode: currentRoomCode, keepIndex1: keep[0], keepIndex2: keep[1] });
-                    actionModalOverlay.classList.add('hidden');
-                };
-                ctrl.appendChild(div);
-            });
+            let chosenCardIndex = null;
+            
+            const drawPresidentialCardInterface = () => {
+                ctrl.innerHTML = '';
+                prompt.textContent = "Presidential Legislative Action: Select a policy card to DISCARD into the graveyard:";
+                
+                // Draw card choices loop
+                state.drawnCards.forEach((card, idx) => {
+                    const div = document.createElement('div');
+                    div.className = `policy-card card-${card} animate-pop ${chosenCardIndex === idx ? 'selected-target-card' : ''}`;
+                    div.textContent = card;
+                    
+                    div.onclick = () => {
+                        chosenCardIndex = idx;
+                        drawPresidentialCardInterface(); // Re-render state loop to display confirmation button
+                    };
+                    ctrl.appendChild(div);
+                });
+
+                // Injects the confirmation button if a selection exists
+                if (chosenCardIndex !== null) {
+                    const confirmRow = document.createElement('div');
+                    confirmRow.style.width = "100%";
+                    confirmRow.style.marginTop = "15px";
+                    
+                    const confirmBtn = document.createElement('button');
+                    confirmBtn.className = "btn wood-btn primary animate-pop";
+                    confirmBtn.style.width = "100%";
+                    confirmBtn.textContent = `Confirm Discard Selection 🗑`;
+                    
+                    confirmBtn.onclick = () => {
+                        const keep = [0, 1, 2].filter(i => i !== chosenCardIndex);
+                        socket.emit('presidentDiscard', { roomCode: currentRoomCode, keepIndex1: keep[0], keepIndex2: keep[1] });
+                        actionModalOverlay.classList.add('hidden');
+                    };
+                    confirmRow.appendChild(confirmBtn);
+                    ctrl.appendChild(confirmRow);
+                }
+            };
+            drawPresidentialCardInterface();
         } else {
             fallbackStatusText = "Legislative Phase: The President is choosing a card to discard...";
         }
     } 
+    // 2. Multi-Step Selection-Then-Confirmation workflow handler for the Chancellor
     else if (state.phase === 'LEGISLATIVE_CHANCELLOR') {
         if (amIChancellor) {
             isMyActionTurn = true;
-            prompt.textContent = "Chancellor Action: Choose ONE card to ENACT into permanent law:";
-            state.drawnCards.forEach((card, idx) => {
-                const div = document.createElement('div');
-                div.className = `policy-card card-${card} animate-pop`;
-                div.textContent = card;
-                div.onclick = () => {
-                    socket.emit('chancellorEnact', { roomCode: currentRoomCode, enactIndex: idx });
-                    actionModalOverlay.classList.add('hidden');
-                };
-                ctrl.appendChild(div);
-            });
+            let chosenCardIndex = null;
 
-            // Rule Modification: Render 'Request Veto' option explicitly if 5 fascist policies are set
-            if (state.fascistPolicies === 5) {
-                const vetoBtn = document.createElement('button');
-                vetoBtn.className = "btn control-btn animate-pop";
-                vetoBtn.style.background = "linear-gradient(to bottom, #ff3d00, #c62828)";
-                vetoBtn.style.display = "block";
-                vetoBtn.style.margin = "15px auto 0";
-                vetoBtn.textContent = "Call For Agenda Veto ✋";
-                vetoBtn.onclick = () => {
-                    socket.emit('requestVeto', currentRoomCode);
-                    actionModalOverlay.classList.add('hidden');
-                };
-                ctrl.appendChild(vetoBtn);
-            }
+            const drawChancellorCardInterface = () => {
+                ctrl.innerHTML = '';
+                prompt.textContent = "Chancellor Legislative Action: Select a policy card to ENACT into constitutional law:";
+                
+                state.drawnCards.forEach((card, idx) => {
+                    const div = document.createElement('div');
+                    div.className = `policy-card card-${card} animate-pop ${chosenCardIndex === idx ? 'selected-target-card' : ''}`;
+                    div.textContent = card;
+                    
+                    div.onclick = () => {
+                        chosenCardIndex = idx;
+                        drawChancellorCardInterface();
+                    };
+                    ctrl.appendChild(div);
+                });
+
+                if (chosenCardIndex !== null) {
+                    const confirmRow = document.createElement('div');
+                    confirmRow.style.width = "100%";
+                    confirmRow.style.marginTop = "15px";
+                    
+                    const confirmBtn = document.createElement('button');
+                    confirmBtn.className = "btn success-btn animate-pop";
+                    confirmBtn.style.width = "100%";
+                    confirmBtn.textContent = `Confirm Enact Selection 📜`;
+                    
+                    confirmBtn.onclick = () => {
+                        socket.emit('chancellorEnact', { roomCode: currentRoomCode, enactIndex: chosenCardIndex });
+                        actionModalOverlay.classList.add('hidden');
+                    };
+                    confirmRow.appendChild(confirmBtn);
+                    ctrl.appendChild(confirmRow);
+                }
+
+                if (state.fascistPolicies === 5) {
+                    const vetoBtn = document.createElement('button');
+                    vetoBtn.className = "btn control-btn animate-pop";
+                    vetoBtn.style.background = "linear-gradient(to bottom, #ff3d00, #c62828)";
+                    vetoBtn.style.display = "block";
+                    vetoBtn.style.margin = "15px auto 0";
+                    vetoBtn.textContent = "Call For Agenda Veto ✋";
+                    vetoBtn.onclick = () => {
+                        socket.emit('requestVeto', currentRoomCode);
+                        actionModalOverlay.classList.add('hidden');
+                    };
+                    ctrl.appendChild(vetoBtn);
+                }
+            };
+            drawChancellorCardInterface();
         } else {
             fallbackStatusText = "Legislative Phase: The Chancellor is selecting a card to enact into law...";
         }
     } 
-    // Veto Action Phase Overlay Renderer Loop
     else if (state.phase === 'VETO_REQUEST') {
         if (amIPresident) {
             isMyActionTurn = true;
