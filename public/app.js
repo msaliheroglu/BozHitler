@@ -141,6 +141,7 @@ const langPack = {
         nominationPassivePrompt: "Nomination Phase: Waiting for {name} to propose a Chancellor...",
         votingChoicePrompt: "President {pres} nominated \"{chan}\" as Chancellor. Cast your Government Vote:",
         votingDeceasedPassive: "You are deceased. Watching the election process unfold...",
+        votingVotedPassive: "You have cast your ballot! Waiting for remaining players...",
         voteRevealPassive: "ELECTION BALLOT SUMMARY: Revealing votes cast by all players...",
         legislativePresPrompt: "Presidential Legislative Action: Select a policy card to DISCARD into the graveyard:",
         legislativePresPassive: "Legislative Phase: The President is choosing a card to discard...",
@@ -212,6 +213,7 @@ const langPack = {
         nominationPassivePrompt: "Adaylık Evresi: {name} isimli Cumhurbaşkanının Şansölye önermesi bekleniyor...",
         votingChoicePrompt: "Cumhurbaşkanı {pres}, \"{chan}\" oyuncusunu Şansölye adayı gösterdi. Hükümet için oy kullanın:",
         votingDeceasedPassive: "Öldün. Seçim sürecini izliyorsun...",
+        votingVotedPassive: "Oyunu kullandın! Diğer oyuncuların tamamlaması bekleniyor...",
         voteRevealPassive: "SEÇİM SIRA ÖZETİ: Tüm oyuncuların kullandığı oylar açıklanıyor...",
         legislativePresPrompt: "Cumhurbaşkanı Yasama Eylemi: Mezarlığa ISKARTAYA ATMAK için bir politika kartı seç:",
         legislativePresPassive: "Yasama Evresi: Cumhurbaşkanı ıskartaya atılacak bir kart seçiyor...",
@@ -279,15 +281,12 @@ function updateStaticTranslations() {
     setTxt('btn-close-policy-flash', pack.btnContinue);
     setTxt('btn-return-lobby', pack.btnReturnLobby);
     
-    // Fixed Bug 2: Local UI refresh logic avoids dropped websocket emissions
     if (lastSavedState) {
-        // Safe programmatic simulation forced update
         const fakeStateUpdateEvent = new CustomEvent('forceLocalRefresh');
         window.dispatchEvent(fakeStateUpdateEvent);
     }
 }
 
-// Fixed Bug 2 Listener: Dynamically processes text updates instantly from local memory cache
 window.addEventListener('forceLocalRefresh', () => {
     if (lastSavedState) {
         if (lastSavedState.status === 'IN_PROGRESS') {
@@ -356,7 +355,6 @@ socket.on('gameStateUpdate', (state) => {
         endScreen.classList.add('hidden');
         lobbyScreen.classList.remove('hidden');
         
-        // Fixed: The room text update selector safely executes because the count element matches
         const countBadge = document.getElementById('lobby-count');
         if (countBadge) countBadge.textContent = state.players.length;
         
@@ -421,9 +419,6 @@ socket.on('gameStateUpdate', (state) => {
         renderTrack('liberal-slots-track', state.liberalPolicies, 5, 'Liberal', state.players.length);
         renderTrack('fascist-slots-track', state.fascistPolicies, 6, 'Fascist', state.players.length);
         
-        const myPlayerObj = state.players.find(p => p.id === myId);
-        const amIVoted = myPlayerObj?.hasVoted;
-
         const pList = document.getElementById('game-players-list');
         pList.innerHTML = '';
         state.players.forEach(p => {
@@ -594,6 +589,9 @@ function renderControls(state) {
     else if (state.phase === 'VOTING') {
         if(myPlayerObj && myPlayerObj.isDead) {
             fallbackStatusText = pack.votingDeceasedPassive;
+        } else if (myPlayerObj && myPlayerObj.hasVoted) {
+            // Fixed: Enforces modal closure and passive display once ballot state confirms true
+            fallbackStatusText = pack.votingVotedPassive;
         } else {
             isMyActionTurn = true;
             const currentPresObj = state.players.find(p => p.isPresident);
@@ -844,5 +842,4 @@ function renderControls(state) {
     }
 }
 
-// Fixed Bug 4: Structural initialization trigger guarantees language settings bind right on initial load
 updateStaticTranslations();
