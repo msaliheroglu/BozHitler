@@ -157,6 +157,7 @@ const langPack = {
         presElectTitle: "PRESIDENT-ELECT",
         chanElectTitle: "CHANCELLOR-ELECT CANDIDATE",
         nominationPresidentPrompt: "Select a Candidate to Nominate as Chancellor-Elect:",
+        btnConfirmNomination: "Confirm Chancellor Nomination 📜",
         nominationPassivePrompt: "Nomination Phase: Waiting for {name} to propose a Chancellor...",
         votingChoicePrompt: "President {pres} nominated \"{chan}\" as Chancellor. Cast your Government Vote:",
         votingDeceasedPassive: "You are deceased. Watching the election process unfold...",
@@ -177,10 +178,13 @@ const langPack = {
         powerPeekPassive: "Executive Power: The President is inspecting the upcoming deck order...",
         btnEndPeek: "End Policy Peek Turn",
         powerInvestigatePrompt: "EXECUTIVE POWER: Select a living player to investigate their Party Loyalty:",
+        btnConfirmInvestigate: "Confirm Investigation Selection 🔍",
         powerInvestigatePassive: "Executive Power: The President is currently investigating a player's loyalty card...",
         powerElectionPrompt: "EXECUTIVE POWER: Select the next player to pass the Special Presidency to:",
+        btnConfirmElection: "Confirm Special Presidency Appointee 🗳️",
         powerElectionPassive: "Executive Power: The President is appointing a candidate to a Special Election turn...",
         powerExecutionPrompt: "EXECUTIVE POWER: Choose a player to EXECUTE (Killing Hitler awards Liberals victory):",
+        btnConfirmExecution: "Confirm Execution Target ☠️",
         powerExecutionPassive: "🚨 CRITICAL THREAT: The President is selecting a player for execution!",
         victoryTitle: "MATCH CONCLUDED!",
         detectedParty: "🔍 PARTY:",
@@ -238,6 +242,7 @@ const langPack = {
         presElectTitle: "SEÇİLEN CUMHURBAŞKANI",
         chanElectTitle: "SEÇİLEN ŞANSÖLYE ADAYI",
         nominationPresidentPrompt: "Şansölye Adayı Olarak Atamak İçin Bir Oyuncu Seçin:",
+        btnConfirmNomination: "Şansölye Adaylığını Onayla 📜",
         nominationPassivePrompt: "Adaylık Evresi: {name} isimli Cumhurbaşkanının Şansölye önermesi bekleniyor...",
         votingChoicePrompt: "Cumhurbaşkanı {pres}, \"{chan}\" oyuncusunu Şansölye adayı gösterdi. Hükümet için oy kullanın:",
         votingDeceasedPassive: "Öldün. Seçim sürecini izliyorsun...",
@@ -258,10 +263,13 @@ const langPack = {
         powerPeekPassive: "Yürütme Gücü: Cumhurbaşkanı yaklaşan deste sırasını inceliyor...",
         btnEndPeek: "Politika Dikizleme Turunu Bitir",
         powerInvestigatePrompt: "YÜRÜTME GÜCÜ: Sadakatini araştırmak için yaşayan bir oyuncu seç:",
+        btnConfirmInvestigate: "Soruşturma Seçimini Onayla 🔍",
         powerInvestigatePassive: "Yürütme Gücü: Cumhurbaşkanı şu anda bir oyuncunun sadakat kartını araştırıyor...",
         powerElectionPrompt: "YÜRÜTME GÜCÜ: Özel Cumhurbaşkanlığını devretmek için bir sonraki oyuncuyu seç:",
+        btnConfirmElection: "Özel Başkanlık Atamasını Onayla 🗳️",
         powerElectionPassive: "Yürütme Gücü: Cumhurbaşkanı Özel Seçim turu için bir aday atıyor...",
         powerExecutionPrompt: "YÜRÜTME GÜCÜ: İDAM ETMEK için bir oyuncu seç (Hitler'i öldürmek Liberallere zafer kazandırır):",
+        btnConfirmExecution: "İdam Seçimini Onayla ☠️",
         powerExecutionPassive: "🚨 KRİTİK TEHDİT: Cumhurbaşkanı idam için bir oyuncu seçiyor!",
         victoryTitle: "MAÇ SONUÇLANDI!",
         detectedParty: "🔍 PARTİ:",
@@ -375,14 +383,14 @@ function syncRoomCodeText(code) {
     });
 }
 
-function createPlayerGridCard(p, isSelectable, reasonBadge, onClickFn) {
+function createPlayerGridCard(p, isSelectable, reasonBadge, onClickFn, isSelected = false) {
     const card = document.createElement('div');
-    card.className = `player-card ${isSelectable ? 'chancellor-card-selectable' : 'chancellor-card-disabled'}`;
+    card.className = `player-card ${isSelectable ? 'chancellor-card-selectable' : 'chancellor-card-disabled'} ${isSelected ? 'selected-target-card' : ''}`;
 
     card.innerHTML = `
         <div class="player-card-name">${p.name}</div>
         <div class="player-card-badges-container">
-            ${reasonBadge ? `<span class="badge-tag offline">${reasonBadge}</span>` : `<span class="badge-tag chan">SELECT</span>`}
+            ${reasonBadge ? `<span class="badge-tag offline">${reasonBadge}</span>` : `<span class="badge-tag chan" style="${isSelected ? 'background:#ffca28; color:#000;' : ''}">${isSelected ? '✓ SELECTED' : 'SELECT'}</span>`}
         </div>
     `;
 
@@ -685,41 +693,66 @@ function renderControls(state) {
             fallbackStatusText = pack.endTermPassive.replace('{name}', currentPresName);
         }
     }
+    // Select-then-Confirm Nomination Phase
     else if (state.phase === 'NOMINATION') {
         if (amIPresident) {
             isMyActionTurn = true;
             const currentPresObj = state.players.find(p => p.isPresident);
             const currentPresName = currentPresObj ? currentPresObj.name : "President";
+            let chosenPlayerId = null;
 
-            prompt.innerHTML = `
-                <div style="border-bottom:1px solid #ffb300; padding-bottom:6px; margin-bottom:8px; font-weight:bold; color:#ffb300;">
-                    ${pack.presElectTitle}: ${currentPresName}
-                </div>
-                <div style="font-size:1.05rem; color:#fff;">${pack.nominationPresidentPrompt}</div>
-            `;
+            const drawNominationInterface = () => {
+                ctrl.innerHTML = '';
+                prompt.innerHTML = `
+                    <div style="border-bottom:1px solid #ffb300; padding-bottom:6px; margin-bottom:8px; font-weight:bold; color:#ffb300;">
+                        ${pack.presElectTitle}: ${currentPresName}
+                    </div>
+                    <div style="font-size:1.05rem; color:#fff;">${pack.nominationPresidentPrompt}</div>
+                `;
 
-            const grid = document.createElement('div');
-            grid.className = 'chancellor-nomination-grid';
+                const grid = document.createElement('div');
+                grid.className = 'chancellor-nomination-grid';
 
-            state.players.forEach(p => {
-                const isSelf = p.id === myId;
-                const isSelectable = !isSelf && !p.isDead && !p.isDisconnected && p.isEligibleChancellor;
+                state.players.forEach(p => {
+                    const isSelf = p.id === myId;
+                    const isSelectable = !isSelf && !p.isDead && !p.isDisconnected && p.isEligibleChancellor;
+                    const isSelected = chosenPlayerId === p.id;
 
-                let reasonBadge = '';
-                if (isSelf) reasonBadge = pack.reasonYou;
-                else if (p.isDead) reasonBadge = pack.badgeDead;
-                else if (p.isDisconnected) reasonBadge = pack.reasonOffline;
-                else if (!p.isEligibleChancellor) reasonBadge = pack.reasonTermLimit;
+                    let reasonBadge = '';
+                    if (isSelf) reasonBadge = pack.reasonYou;
+                    else if (p.isDead) reasonBadge = pack.badgeDead;
+                    else if (p.isDisconnected) reasonBadge = pack.reasonOffline;
+                    else if (!p.isEligibleChancellor) reasonBadge = pack.reasonTermLimit;
 
-                const card = createPlayerGridCard(p, isSelectable, reasonBadge, () => {
-                    socket.emit('nominateChancellor', { roomCode: currentRoomCode, chancellorId: p.id });
-                    actionModalOverlay.classList.add('hidden');
+                    const card = createPlayerGridCard(p, isSelectable, reasonBadge, () => {
+                        chosenPlayerId = p.id;
+                        drawNominationInterface();
+                    }, isSelected);
+
+                    grid.appendChild(card);
                 });
 
-                grid.appendChild(card);
-            });
+                ctrl.appendChild(grid);
 
-            ctrl.appendChild(grid);
+                if (chosenPlayerId !== null) {
+                    const confirmRow = document.createElement('div');
+                    confirmRow.style.width = "100%";
+                    confirmRow.style.marginTop = "15px";
+
+                    const confirmBtn = document.createElement('button');
+                    confirmBtn.className = "btn success-btn animate-pop";
+                    confirmBtn.style.width = "100%";
+                    confirmBtn.textContent = pack.btnConfirmNomination;
+
+                    confirmBtn.onclick = () => {
+                        socket.emit('nominateChancellor', { roomCode: currentRoomCode, chancellorId: chosenPlayerId });
+                        actionModalOverlay.classList.add('hidden');
+                    };
+                    confirmRow.appendChild(confirmBtn);
+                    ctrl.appendChild(confirmRow);
+                }
+            };
+            drawNominationInterface();
         } else {
             const currentPresName = state.players.find(p => p.isPresident)?.name || "President";
             fallbackStatusText = pack.nominationPassivePrompt.replace('{name}', currentPresName);
@@ -836,7 +869,6 @@ function renderControls(state) {
                     ctrl.appendChild(confirmRow);
                 }
 
-                // Render Veto Button ONLY if fascist policies == 5 AND veto was not denied this turn
                 if (state.fascistPolicies === 5 && !state.vetoDenied) {
                     const vetoBtn = document.createElement('button');
                     vetoBtn.className = "btn control-btn animate-pop";
@@ -909,93 +941,173 @@ function renderControls(state) {
             fallbackStatusText = pack.powerPeekPassive;
         }
     }
+    // Select-then-Confirm Investigate Loyalty Phase
     else if (state.phase === 'PRESIDENTIAL_POWER_INVESTIGATE') {
         if (amIPresident) {
             isMyActionTurn = true;
-            prompt.textContent = pack.powerInvestigatePrompt;
+            let chosenPlayerId = null;
 
-            const grid = document.createElement('div');
-            grid.className = 'chancellor-nomination-grid';
+            const drawInvestigateInterface = () => {
+                ctrl.innerHTML = '';
+                prompt.textContent = pack.powerInvestigatePrompt;
 
-            state.players.forEach(p => {
-                const isSelf = p.id === myId;
-                const isSelectable = !isSelf && !p.isDead && !p.isDisconnected;
+                const grid = document.createElement('div');
+                grid.className = 'chancellor-nomination-grid';
 
-                let reasonBadge = '';
-                if (isSelf) reasonBadge = pack.reasonYou;
-                else if (p.isDead) reasonBadge = pack.badgeDead;
-                else if (p.isDisconnected) reasonBadge = pack.reasonOffline;
+                state.players.forEach(p => {
+                    const isSelf = p.id === myId;
+                    const isSelectable = !isSelf && !p.isDead && !p.isDisconnected;
+                    const isSelected = chosenPlayerId === p.id;
 
-                const card = createPlayerGridCard(p, isSelectable, reasonBadge, () => {
-                    socket.emit('investigateLoyalty', { roomCode: currentRoomCode, targetId: p.id });
-                    actionModalOverlay.classList.add('hidden');
+                    let reasonBadge = '';
+                    if (isSelf) reasonBadge = pack.reasonYou;
+                    else if (p.isDead) reasonBadge = pack.badgeDead;
+                    else if (p.isDisconnected) reasonBadge = pack.reasonOffline;
+
+                    const card = createPlayerGridCard(p, isSelectable, reasonBadge, () => {
+                        chosenPlayerId = p.id;
+                        drawInvestigateInterface();
+                    }, isSelected);
+
+                    grid.appendChild(card);
                 });
 
-                grid.appendChild(card);
-            });
+                ctrl.appendChild(grid);
 
-            ctrl.appendChild(grid);
+                if (chosenPlayerId !== null) {
+                    const confirmRow = document.createElement('div');
+                    confirmRow.style.width = "100%";
+                    confirmRow.style.marginTop = "15px";
+
+                    const confirmBtn = document.createElement('button');
+                    confirmBtn.className = "btn control-btn animate-pop";
+                    confirmBtn.style.width = "100%";
+                    confirmBtn.textContent = pack.btnConfirmInvestigate;
+
+                    confirmBtn.onclick = () => {
+                        socket.emit('investigateLoyalty', { roomCode: currentRoomCode, targetId: chosenPlayerId });
+                        actionModalOverlay.classList.add('hidden');
+                    };
+                    confirmRow.appendChild(confirmBtn);
+                    ctrl.appendChild(confirmRow);
+                }
+            };
+            drawInvestigateInterface();
         } else {
             fallbackStatusText = pack.powerInvestigatePassive;
         }
     }
+    // Select-then-Confirm Special Election Phase
     else if (state.phase === 'PRESIDENTIAL_POWER_ELECTION') {
         if (amIPresident) {
             isMyActionTurn = true;
-            prompt.textContent = pack.powerElectionPrompt;
+            let chosenPlayerId = null;
 
-            const grid = document.createElement('div');
-            grid.className = 'chancellor-nomination-grid';
+            const drawElectionInterface = () => {
+                ctrl.innerHTML = '';
+                prompt.textContent = pack.powerElectionPrompt;
 
-            state.players.forEach(p => {
-                const isSelf = p.id === myId;
-                const isSelectable = !isSelf && !p.isDead && !p.isDisconnected;
+                const grid = document.createElement('div');
+                grid.className = 'chancellor-nomination-grid';
 
-                let reasonBadge = '';
-                if (isSelf) reasonBadge = pack.reasonYou;
-                else if (p.isDead) reasonBadge = pack.badgeDead;
-                else if (p.isDisconnected) reasonBadge = pack.reasonOffline;
+                state.players.forEach(p => {
+                    const isSelf = p.id === myId;
+                    const isSelectable = !isSelf && !p.isDead && !p.isDisconnected;
+                    const isSelected = chosenPlayerId === p.id;
 
-                const card = createPlayerGridCard(p, isSelectable, reasonBadge, () => {
-                    socket.emit('callSpecialElection', { roomCode: currentRoomCode, targetId: p.id });
-                    actionModalOverlay.classList.add('hidden');
+                    let reasonBadge = '';
+                    if (isSelf) reasonBadge = pack.reasonYou;
+                    else if (p.isDead) reasonBadge = pack.badgeDead;
+                    else if (p.isDisconnected) reasonBadge = pack.reasonOffline;
+
+                    const card = createPlayerGridCard(p, isSelectable, reasonBadge, () => {
+                        chosenPlayerId = p.id;
+                        drawElectionInterface();
+                    }, isSelected);
+
+                    grid.appendChild(card);
                 });
 
-                grid.appendChild(card);
-            });
+                ctrl.appendChild(grid);
 
-            ctrl.appendChild(grid);
+                if (chosenPlayerId !== null) {
+                    const confirmRow = document.createElement('div');
+                    confirmRow.style.width = "100%";
+                    confirmRow.style.marginTop = "15px";
+
+                    const confirmBtn = document.createElement('button');
+                    confirmBtn.className = "btn control-btn animate-pop";
+                    confirmBtn.style.background = "linear-gradient(to bottom, #9c27b0, #6a1b9a)";
+                    confirmBtn.style.width = "100%";
+                    confirmBtn.textContent = pack.btnConfirmElection;
+
+                    confirmBtn.onclick = () => {
+                        socket.emit('callSpecialElection', { roomCode: currentRoomCode, targetId: chosenPlayerId });
+                        actionModalOverlay.classList.add('hidden');
+                    };
+                    confirmRow.appendChild(confirmBtn);
+                    ctrl.appendChild(confirmRow);
+                }
+            };
+            drawElectionInterface();
         } else {
             fallbackStatusText = pack.powerElectionPassive;
         }
     }
+    // Select-then-Confirm Execution Phase (Supports Bozbey Self-Target)
     else if (state.phase === 'PRESIDENTIAL_POWER_EXECUTION') {
         if (amIPresident) {
             isMyActionTurn = true;
-            prompt.textContent = pack.powerExecutionPrompt;
+            let chosenPlayerId = null;
 
-            const grid = document.createElement('div');
-            grid.className = 'chancellor-nomination-grid';
+            const drawExecutionInterface = () => {
+                ctrl.innerHTML = '';
+                prompt.textContent = pack.powerExecutionPrompt;
 
-            state.players.forEach(p => {
-                const isSelf = p.id === myId;
-                const isBozbey = state.yourRole === 'Bozbey';
-                const isSelectable = !p.isDead && !p.isDisconnected && (!isSelf || isBozbey);
+                const grid = document.createElement('div');
+                grid.className = 'chancellor-nomination-grid';
 
-                let reasonBadge = '';
-                if (isSelf && !isBozbey) reasonBadge = pack.reasonYou;
-                else if (p.isDead) reasonBadge = pack.badgeDead;
-                else if (p.isDisconnected) reasonBadge = pack.reasonOffline;
+                state.players.forEach(p => {
+                    const isSelf = p.id === myId;
+                    const isBozbey = state.yourRole === 'Bozbey';
+                    const isSelectable = !p.isDead && !p.isDisconnected && (!isSelf || isBozbey);
+                    const isSelected = chosenPlayerId === p.id;
 
-                const card = createPlayerGridCard(p, isSelectable, reasonBadge, () => {
-                    socket.emit('executeTargetPlayer', { roomCode: currentRoomCode, targetId: p.id });
-                    actionModalOverlay.classList.add('hidden');
+                    let reasonBadge = '';
+                    if (isSelf && !isBozbey) reasonBadge = pack.reasonYou;
+                    else if (p.isDead) reasonBadge = pack.badgeDead;
+                    else if (p.isDisconnected) reasonBadge = pack.reasonOffline;
+
+                    const card = createPlayerGridCard(p, isSelectable, reasonBadge, () => {
+                        chosenPlayerId = p.id;
+                        drawExecutionInterface();
+                    }, isSelected);
+
+                    grid.appendChild(card);
                 });
 
-                grid.appendChild(card);
-            });
+                ctrl.appendChild(grid);
 
-            ctrl.appendChild(grid);
+                if (chosenPlayerId !== null) {
+                    const confirmRow = document.createElement('div');
+                    confirmRow.style.width = "100%";
+                    confirmRow.style.marginTop = "15px";
+
+                    const confirmBtn = document.createElement('button');
+                    confirmBtn.className = "btn wood-btn primary animate-pop";
+                    confirmBtn.style.boxShadow = "0 0 10px #ff3d00";
+                    confirmBtn.style.width = "100%";
+                    confirmBtn.textContent = pack.btnConfirmExecution;
+
+                    confirmBtn.onclick = () => {
+                        socket.emit('executeTargetPlayer', { roomCode: currentRoomCode, targetId: chosenPlayerId });
+                        actionModalOverlay.classList.add('hidden');
+                    };
+                    confirmRow.appendChild(confirmBtn);
+                    ctrl.appendChild(confirmRow);
+                }
+            };
+            drawExecutionInterface();
         } else {
             fallbackStatusText = pack.powerExecutionPassive;
         }
