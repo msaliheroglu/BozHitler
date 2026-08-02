@@ -12,10 +12,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 const rooms = {};
 const botNames = ["Bot Alpha", "Bot Beta", "Bot Gamma", "Bot Delta", "Bot Epsilon"];
 
+// Fixed: Correct Fisher-Yates array element swapping
 function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[i], array[j]];
+        [array[i], array[j]] = [array[j], array[i]];
     }
     return array;
 }
@@ -91,7 +92,7 @@ function getSanitizedState(room, playerId) {
         roomCode: room.code,
         status: room.status,
         bozbeyMode: room.bozbeyMode,
-        vetoDenied: room.vetoDenied || false, // Pass single-veto flag to clients
+        vetoDenied: room.vetoDenied || false,
         amIHost: currentHostPlayer && currentHostPlayer.id === playerId, 
         players: room.players.map(p => {
             let roleToReveal = null;
@@ -166,7 +167,7 @@ function finishPresidentialTurn(room) {
 }
 
 function completeTurnAdvance(room) {
-    room.vetoDenied = false; // Reset single-veto flag on turn handover
+    room.vetoDenied = false;
 
     if (room.specialPresidentActive && room.pendingSpecialPresidentIdx !== null) {
         room.presidentIdx = room.pendingSpecialPresidentIdx;
@@ -244,7 +245,6 @@ function triggerBotActions(roomCode) {
         }
 
         if (room.phase === 'LEGISLATIVE_CHANCELLOR' && currentChancellor?.isBot) {
-            // AI Chancellor respects vetoDenied
             if (room.fascistPolicies === 5 && !room.vetoDenied && currentChancellor.role === 'Liberal' && !room.drawnCards.includes('Liberal')) {
                 room.phase = 'VETO_REQUEST';
                 broadcastState(roomCode);
@@ -322,7 +322,6 @@ function checkAndReplenishDeck(room) {
     }
 }
 
-// Single-Veto Resolution Engine
 function executeVetoResolution(room, accept) {
     if (accept) {
         room.vetoDenied = false;
@@ -349,7 +348,6 @@ function executeVetoResolution(room, accept) {
         }
         finishPresidentialTurn(room);
     } else {
-        // Veto denied: Mark as denied so Chancellor CANNOT veto again this turn
         room.vetoDenied = true;
         room.phase = 'LEGISLATIVE_CHANCELLOR'; 
     }
@@ -651,7 +649,7 @@ io.on('connection', (socket) => {
         if (!room || room.phase !== 'LEGISLATIVE_CHANCELLOR') return;
         if (room.players[room.chancellorIdx].id !== socket.id) return;
         if (room.fascistPolicies !== 5) return;
-        if (room.vetoDenied) return; // Block second veto request
+        if (room.vetoDenied) return;
 
         room.phase = 'VETO_REQUEST';
         broadcastState(roomCode);
