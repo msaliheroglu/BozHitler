@@ -64,35 +64,6 @@ body {
     0% { transform: scale(0.85) translateY(-30px); opacity: 0; }
     100% { transform: scale(1) translateY(0); opacity: 1; }
 }
-@keyframes phaseSlide {
-    0% { transform: translateY(-50px); opacity: 0; }
-    20% { transform: translateY(0); opacity: 1; }
-    80% { transform: translateY(0); opacity: 1; }
-    100% { transform: translateY(-50px); opacity: 0; }
-}
-
-/* Phase Transition Banner Floating Overlay */
-.phase-transition-banner {
-    position: fixed;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 99999;
-    pointer-events: none;
-    animation: phaseSlide 2s ease-in-out forwards;
-}
-.phase-banner-content {
-    background: linear-gradient(135deg, #271410 0%, #000000 100%);
-    border: 2px solid #ffb300;
-    color: #ffb300;
-    font-family: 'Cinzel', serif;
-    font-weight: 900;
-    font-size: 1.3rem;
-    padding: 10px 25px;
-    border-radius: 30px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(255, 179, 0, 0.4);
-    letter-spacing: 2px;
-}
 
 .screen.main-menu {
     display: flex;
@@ -399,7 +370,6 @@ input[type="text"]#room-code {
     width: 100%;
 }
 
-/* Chancellor Nomination Grid Card Extensions */
 .chancellor-nomination-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));

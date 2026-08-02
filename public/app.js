@@ -9,6 +9,20 @@ let currentLang = 'en';
 
 let recordedPhase = null;
 
+let popupDelayActive = false;
+let popupCooldownTimer = null;
+
+function triggerPopupCooldown() {
+    popupDelayActive = true;
+    if (popupCooldownTimer) clearTimeout(popupCooldownTimer);
+    popupCooldownTimer = setTimeout(() => {
+        popupDelayActive = false;
+        if (lastSavedState) {
+            renderControls(lastSavedState);
+        }
+    }, 3000);
+}
+
 const setupScreen = document.getElementById('setup-screen');
 const lobbyScreen = document.getElementById('lobby-screen');
 const gameScreen = document.getElementById('game-screen');
@@ -51,6 +65,7 @@ socket.on('playerExecuted', (data) => {
 
 btnCloseExecutionModal.onclick = () => {
     executionOverlay.classList.add('hidden');
+    triggerPopupCooldown();
 };
 
 document.getElementById('btn-create').onclick = () => {
@@ -101,13 +116,12 @@ policyAnimationOverlay.onclick = (e) => {
 btnCloseRoleReveal.onclick = () => {
     localRoleBriefingSeen = true;
     roleRevealOverlay.classList.add('hidden');
-    if (lastSavedState) {
-        renderControls(lastSavedState); 
-    }
+    triggerPopupCooldown();
 };
 
 btnClosePolicyFlash.onclick = () => {
     policyAnimationOverlay.classList.add('hidden');
+    triggerPopupCooldown();
 };
 
 const langPack = {
@@ -466,9 +480,6 @@ socket.on('gameStateUpdate', (state) => {
 
         updateChaosTracker(state.electionTracker);
 
-        if (recordedPhase !== null && recordedPhase !== state.phase) {
-            triggerPhaseTransitionAnimation(state.phase);
-        }
         recordedPhase = state.phase;
 
         if (recordedLiberalLaws !== null && state.liberalPolicies > recordedLiberalLaws) {
@@ -685,6 +696,7 @@ function renderControls(state) {
             terminateBtn.onclick = () => {
                 socket.emit('terminateTerm', currentRoomCode);
                 actionModalOverlay.classList.add('hidden');
+                triggerPopupCooldown();
             };
 
             ctrl.appendChild(terminateBtn);
@@ -693,7 +705,6 @@ function renderControls(state) {
             fallbackStatusText = pack.endTermPassive.replace('{name}', currentPresName);
         }
     }
-    // Select-then-Confirm Nomination Phase
     else if (state.phase === 'NOMINATION') {
         if (amIPresident) {
             isMyActionTurn = true;
@@ -747,6 +758,7 @@ function renderControls(state) {
                     confirmBtn.onclick = () => {
                         socket.emit('nominateChancellor', { roomCode: currentRoomCode, chancellorId: chosenPlayerId });
                         actionModalOverlay.classList.add('hidden');
+                        triggerPopupCooldown();
                     };
                     confirmRow.appendChild(confirmBtn);
                     ctrl.appendChild(confirmRow);
@@ -777,6 +789,7 @@ function renderControls(state) {
                 btn.onclick = () => {
                     socket.emit('castVote', { roomCode: currentRoomCode, vote: idx === 0 });
                     actionModalOverlay.classList.add('hidden');
+                    triggerPopupCooldown();
                 };
                 ctrl.appendChild(btn);
             });
@@ -820,6 +833,7 @@ function renderControls(state) {
                         const keep = [0, 1, 2].filter(i => i !== chosenCardIndex);
                         socket.emit('presidentDiscard', { roomCode: currentRoomCode, keepIndex1: keep[0], keepIndex2: keep[1] });
                         actionModalOverlay.classList.add('hidden');
+                        triggerPopupCooldown();
                     };
                     confirmRow.appendChild(confirmBtn);
                     ctrl.appendChild(confirmRow);
@@ -864,6 +878,7 @@ function renderControls(state) {
                     confirmBtn.onclick = () => {
                         socket.emit('chancellorEnact', { roomCode: currentRoomCode, enactIndex: chosenCardIndex });
                         actionModalOverlay.classList.add('hidden');
+                        triggerPopupCooldown();
                     };
                     confirmRow.appendChild(confirmBtn);
                     ctrl.appendChild(confirmRow);
@@ -879,6 +894,7 @@ function renderControls(state) {
                     vetoBtn.onclick = () => {
                         socket.emit('requestVeto', currentRoomCode);
                         actionModalOverlay.classList.add('hidden');
+                        triggerPopupCooldown();
                     };
                     ctrl.appendChild(vetoBtn);
                 }
@@ -899,6 +915,7 @@ function renderControls(state) {
             acceptBtn.onclick = () => {
                 socket.emit('respondToVeto', { roomCode: currentRoomCode, accept: true });
                 actionModalOverlay.classList.add('hidden');
+                triggerPopupCooldown();
             };
 
             const denyBtn = document.createElement('button');
@@ -907,6 +924,7 @@ function renderControls(state) {
             denyBtn.onclick = () => {
                 socket.emit('respondToVeto', { roomCode: currentRoomCode, accept: false });
                 actionModalOverlay.classList.add('hidden');
+                triggerPopupCooldown();
             };
 
             ctrl.appendChild(acceptBtn);
@@ -935,13 +953,13 @@ function renderControls(state) {
             closeBtn.onclick = () => {
                 socket.emit('closePolicyPeek', currentRoomCode);
                 actionModalOverlay.classList.add('hidden');
+                triggerPopupCooldown();
             };
             ctrl.appendChild(closeBtn);
         } else {
             fallbackStatusText = pack.powerPeekPassive;
         }
     }
-    // Select-then-Confirm Investigate Loyalty Phase
     else if (state.phase === 'PRESIDENTIAL_POWER_INVESTIGATE') {
         if (amIPresident) {
             isMyActionTurn = true;
@@ -987,6 +1005,7 @@ function renderControls(state) {
                     confirmBtn.onclick = () => {
                         socket.emit('investigateLoyalty', { roomCode: currentRoomCode, targetId: chosenPlayerId });
                         actionModalOverlay.classList.add('hidden');
+                        triggerPopupCooldown();
                     };
                     confirmRow.appendChild(confirmBtn);
                     ctrl.appendChild(confirmRow);
@@ -997,7 +1016,6 @@ function renderControls(state) {
             fallbackStatusText = pack.powerInvestigatePassive;
         }
     }
-    // Select-then-Confirm Special Election Phase
     else if (state.phase === 'PRESIDENTIAL_POWER_ELECTION') {
         if (amIPresident) {
             isMyActionTurn = true;
@@ -1044,6 +1062,7 @@ function renderControls(state) {
                     confirmBtn.onclick = () => {
                         socket.emit('callSpecialElection', { roomCode: currentRoomCode, targetId: chosenPlayerId });
                         actionModalOverlay.classList.add('hidden');
+                        triggerPopupCooldown();
                     };
                     confirmRow.appendChild(confirmBtn);
                     ctrl.appendChild(confirmRow);
@@ -1054,7 +1073,6 @@ function renderControls(state) {
             fallbackStatusText = pack.powerElectionPassive;
         }
     }
-    // Select-then-Confirm Execution Phase (Supports Bozbey Self-Target)
     else if (state.phase === 'PRESIDENTIAL_POWER_EXECUTION') {
         if (amIPresident) {
             isMyActionTurn = true;
@@ -1102,6 +1120,7 @@ function renderControls(state) {
                     confirmBtn.onclick = () => {
                         socket.emit('executeTargetPlayer', { roomCode: currentRoomCode, targetId: chosenPlayerId });
                         actionModalOverlay.classList.add('hidden');
+                        triggerPopupCooldown();
                     };
                     confirmRow.appendChild(confirmBtn);
                     ctrl.appendChild(confirmRow);
@@ -1113,7 +1132,7 @@ function renderControls(state) {
         }
     }
 
-    if (isMyActionTurn) {
+    if (isMyActionTurn && !popupDelayActive) {
         actionModalOverlay.classList.remove('hidden');
         passivePromptText.textContent = pack.yourTurnModalAlert;
     } else {
