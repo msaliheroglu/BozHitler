@@ -16,13 +16,14 @@ body {
 
 #game-container {
     background: #3a221d;
-    padding: 15px;
-    border-radius: 16px;
+    padding: 25px;
+    border-radius: 20px;
     width: 100%;
     max-width: 820px;
     box-shadow: 0 25px 55px rgba(0,0,0,0.85), inset 0 0 35px rgba(0,0,0,0.6);
     border: 8px solid #57342c;
     box-sizing: border-box;
+    position: relative;
 }
 
 .hidden { display: none !important; }
@@ -63,15 +64,36 @@ body {
     0% { transform: scale(0.85) translateY(-30px); opacity: 0; }
     100% { transform: scale(1) translateY(0); opacity: 1; }
 }
-@keyframes slowPulseAlert {
-    0% { background: #e64a19; opacity: 0.85; }
-    50% { background: #ff7043; opacity: 1; box-shadow: 0 0 8px #ff7043; }
-    100% { background: #e64a19; opacity: 0.85; }
+@keyframes phaseSlide {
+    0% { transform: translateY(-50px); opacity: 0; }
+    20% { transform: translateY(0); opacity: 1; }
+    80% { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(-50px); opacity: 0; }
 }
 
-/* ==========================================================================
-   HIGH-END SYMMETRICAL MAIN MENU MASTER STYLES
-   ========================================================================== */
+/* Phase Transition Banner Floating Overlay */
+.phase-transition-banner {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 99999;
+    pointer-events: none;
+    animation: phaseSlide 2s ease-in-out forwards;
+}
+.phase-banner-content {
+    background: linear-gradient(135deg, #271410 0%, #000000 100%);
+    border: 2px solid #ffb300;
+    color: #ffb300;
+    font-family: 'Cinzel', serif;
+    font-weight: 900;
+    font-size: 1.3rem;
+    padding: 10px 25px;
+    border-radius: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(255, 179, 0, 0.4);
+    letter-spacing: 2px;
+}
+
 .screen.main-menu {
     display: flex;
     flex-direction: column;
@@ -91,7 +113,6 @@ body {
     text-align: center;
 }
 
-/* Premium Language Selector Alignment Widget */
 .lang-selector-card {
     background: rgba(20, 10, 8, 0.6);
     border: 1px solid #57342c;
@@ -370,11 +391,37 @@ input[type="text"]#room-code {
 .seating-chart { background: rgba(15, 8, 7, 0.5); padding: 12px; border-radius: 10px; border: 2px solid #57342c; }
 .seating-chart h3 { font-size: 1.1rem; border-bottom: 2px solid #57342c; padding-bottom: 6px; margin: 0 0 12px 0; text-align: center; color: #cca59e; }
 
+/* Grid Cards Table */
 .players-card-grid-deck {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
     gap: 10px;
     width: 100%;
+}
+
+/* Chancellor Nomination Grid Card Extensions */
+.chancellor-nomination-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+    width: 100%;
+    margin-top: 15px;
+}
+
+.chancellor-card-selectable {
+    cursor: pointer;
+    border-color: #ffb300 !important;
+}
+.chancellor-card-selectable:hover {
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 0 15px #ffb300;
+}
+
+.chancellor-card-disabled {
+    opacity: 0.35;
+    filter: grayscale(100%);
+    cursor: not-allowed !important;
+    border-color: #424242 !important;
 }
 
 .player-card {

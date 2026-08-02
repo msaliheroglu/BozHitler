@@ -41,29 +41,38 @@ function assignRoles(room) {
     const count = players.length;
     let roles = [];
     
-    if (count === 5 || count === 6) {
-        roles.push('Hitler', 'Fascist');
-        const liberalsNeeded = count - 2;
-        for (let i = 0; i < liberalsNeeded; i++) roles.push('Liberal');
-    } else if (count === 7 || count === 8) {
-        roles.push('Hitler', 'Fascist', 'Fascist');
-        const liberalsNeeded = count - 3;
-        for (let i = 0; i < liberalsNeeded; i++) roles.push('Liberal');
-    } else { 
-        roles.push('Hitler', 'Fascist', 'Fascist', 'Fascist');
-        const liberalsNeeded = count - 4;
-        for (let i = 0; i < liberalsNeeded; i++) roles.push('Liberal');
+    if (room.bozbeyMode) {
+        if (count === 5 || count === 6) {
+            roles.push('Hitler', 'Bozbey');
+            const liberalsNeeded = count - 2;
+            for (let i = 0; i < liberalsNeeded; i++) roles.push('Liberal');
+        } else if (count === 7 || count === 8) {
+            roles.push('Hitler', 'Fascist', 'Bozbey');
+            const liberalsNeeded = count - 3;
+            for (let i = 0; i < liberalsNeeded; i++) roles.push('Liberal');
+        } else { 
+            roles.push('Hitler', 'Fascist', 'Fascist', 'Bozbey');
+            const liberalsNeeded = count - 4;
+            for (let i = 0; i < liberalsNeeded; i++) roles.push('Liberal');
+        }
+    } else {
+        if (count === 5 || count === 6) {
+            roles.push('Hitler', 'Fascist');
+            const liberalsNeeded = count - 2;
+            for (let i = 0; i < liberalsNeeded; i++) roles.push('Liberal');
+        } else if (count === 7 || count === 8) {
+            roles.push('Hitler', 'Fascist', 'Fascist');
+            const liberalsNeeded = count - 3;
+            for (let i = 0; i < liberalsNeeded; i++) roles.push('Liberal');
+        } else { 
+            roles.push('Hitler', 'Fascist', 'Fascist', 'Fascist');
+            const liberalsNeeded = count - 4;
+            for (let i = 0; i < liberalsNeeded; i++) roles.push('Liberal');
+        }
     }
     
     shuffle(roles);
 
-    if (room.bozbeyMode) {
-        const liberalIndex = roles.indexOf('Liberal');
-        if (liberalIndex !== -1) {
-            roles[liberalIndex] = 'Bozbey';
-        }
-    }
-    
     players.forEach((player, idx) => { 
         player.role = roles[idx]; 
         player.isDead = false; 
@@ -147,17 +156,30 @@ function broadcastState(roomCode) {
     triggerBotActions(roomCode);
 }
 
-function advanceTurn(room) {
-    if (room.specialPresidentActive) {
-        room.specialPresidentActive = false;
-        room.presidentIdx = room.lastRegularPresidentIdx;
+// Step 1: Hold turn at END_PRESIDENTIAL_TERM until the outgoing president terminates their term
+function finishPresidentialTurn(room) {
+    if (room.status !== 'IN_PROGRESS') return;
+    room.phase = 'END_PRESIDENTIAL_TERM';
+    room.drawnCards = [];
+}
+
+// Step 2: Hand over the presidency to the next candidate after termination confirmation
+function completeTurnAdvance(room) {
+    if (room.specialPresidentActive && room.pendingSpecialPresidentIdx !== null) {
+        room.presidentIdx = room.pendingSpecialPresidentIdx;
+        room.pendingSpecialPresidentIdx = null;
+    } else {
+        if (room.specialPresidentActive) {
+            room.specialPresidentActive = false;
+            room.presidentIdx = room.lastRegularPresidentIdx;
+        }
+        do {
+            room.presidentIdx = (room.presidentIdx + 1) % room.players.length;
+        } while (room.players[room.presidentIdx].isDead || room.players[room.presidentIdx].isDisconnected);
+        
+        room.lastRegularPresidentIdx = room.presidentIdx;
     }
     
-    do {
-        room.presidentIdx = (room.presidentIdx + 1) % room.players.length;
-    } while (room.players[room.presidentIdx].isDead || room.players[room.presidentIdx].isDisconnected);
-    
-    room.lastRegularPresidentIdx = room.presidentIdx;
     room.chancellorIdx = null;
     room.phase = 'NOMINATION';
     room.drawnCards = [];
@@ -170,6 +192,12 @@ function triggerBotActions(roomCode) {
     setTimeout(() => {
         const currentPresident = room.players[room.presidentIdx];
         const currentChancellor = room.chancellorIdx !== null ? room.players[room.chancellorIdx] : null;
+
+        if (room.phase === 'END_PRESIDENTIAL_TERM' && currentPresident?.isBot) {
+            completeTurnAdvance(room);
+            broadcastState(roomCode);
+            return;
+        }
 
         if (room.phase === 'NOMINATION' && currentPresident?.isBot) {
             const livingCount = room.players.filter(p => !p.isDead).length;
@@ -232,12 +260,12 @@ function triggerBotActions(roomCode) {
         }
 
         if (room.phase === 'PRESIDENTIAL_POWER_PEEK' && currentPresident?.isBot) {
-            advanceTurn(room);
+            finishPresidentialTurn(room);
             broadcastState(roomCode);
         }
 
         if (room.phase === 'PRESIDENTIAL_POWER_INVESTIGATE' && currentPresident?.isBot) {
-            advanceTurn(room);
+            finishPresidentialTurn(room);
             broadcastState(roomCode);
         }
 
@@ -246,32 +274,36 @@ function triggerBotActions(roomCode) {
             if(targets.length > 0) {
                 const target = targets[Math.floor(Math.random() * targets.length)];
                 room.specialPresidentActive = true;
-                room.presidentIdx = room.players.findIndex(p => p.id === target.id);
-                room.chancellorIdx = null;
-                room.phase = 'NOMINATION';
+                room.pendingSpecialPresidentIdx = room.players.findIndex(p => p.id === target.id);
+                finishPresidentialTurn(room);
             } else {
-                advanceTurn(room);
+                finishPresidentialTurn(room);
             }
             broadcastState(roomCode);
         }
 
         if (room.phase === 'PRESIDENTIAL_POWER_EXECUTION' && currentPresident?.isBot) {
-            const targets = room.players.filter(p => p.id !== currentPresident.id && !p.isDead && !p.isDisconnected);
+            let targets = room.players.filter(p => !p.isDead && !p.isDisconnected);
+            if (currentPresident.role !== 'Bozbey') {
+                targets = targets.filter(p => p.id !== currentPresident.id);
+            }
             if (targets.length > 0) {
                 const victim = targets[Math.floor(Math.random() * targets.length)];
                 victim.isDead = true;
                 
+                io.to(roomCode.toUpperCase()).emit('playerExecuted', { victimName: victim.name, victimRole: victim.role });
+
                 if (victim.role === 'Bozbey') {
                     room.status = 'FINISHED';
-                    room.winner = `Bozbey (${victim.name} won!)`;
+                    room.winner = `Bozbey (${victim.name} won by getting executed!)`;
                 } else if (victim.role === 'Hitler') {
                     room.status = 'FINISHED';
                     room.winner = 'Liberals (Hitler was executed!)';
                 } else {
-                    advanceTurn(room);
+                    finishPresidentialTurn(room);
                 }
             } else {
-                advanceTurn(room);
+                finishPresidentialTurn(room);
             }
             broadcastState(roomCode);
         }
@@ -306,10 +338,10 @@ function executeVetoResolution(room, accept) {
             room.lastElectedPresidentId = null;
             room.lastElectedChancellorId = null;
 
-            if (room.liberalPolicies >= 5) { room.status = 'FINISHED'; room.winner = 'Liberals'; }
-            else if (room.fascistPolicies >= 6) { room.status = 'FINISHED'; room.winner = 'Fascists'; }
+            if (room.liberalPolicies >= 5) { room.status = 'FINISHED'; room.winner = 'Liberals (5 Liberal Policies Enacted!)'; }
+            else if (room.fascistPolicies >= 6) { room.status = 'FINISHED'; room.winner = 'Fascists (6 Fascist Policies Enacted!)'; }
         }
-        advanceTurn(room);
+        finishPresidentialTurn(room);
     } else {
         room.phase = 'LEGISLATIVE_CHANCELLOR'; 
     }
@@ -361,8 +393,20 @@ function evaluateVotes(roomCode) {
                 currentRoom.electionTracker = 0;
                 currentRoom.lastElectedPresidentId = null;
                 currentRoom.lastElectedChancellorId = null;
+
+                if (currentRoom.liberalPolicies >= 5) {
+                    currentRoom.status = 'FINISHED';
+                    currentRoom.winner = 'Liberals (5 Liberal Policies Enacted!)';
+                    broadcastState(roomCode);
+                    return;
+                } else if (currentRoom.fascistPolicies >= 6) {
+                    currentRoom.status = 'FINISHED';
+                    currentRoom.winner = 'Fascists (6 Fascist Policies Enacted!)';
+                    broadcastState(roomCode);
+                    return;
+                }
             }
-            advanceTurn(currentRoom);
+            finishPresidentialTurn(currentRoom);
         }
         currentRoom.votes = {}; 
         broadcastState(roomCode);
@@ -380,10 +424,14 @@ function executeEnact(roomCode, enactIndex) {
 
     if (room.liberalPolicies >= 5) { 
         room.status = 'FINISHED'; 
-        room.winner = 'Liberals'; 
+        room.winner = 'Liberals (5 Liberal Policies Enacted!)'; 
+        broadcastState(roomCode);
+        return;
     } else if (room.fascistPolicies >= 6) { 
         room.status = 'FINISHED'; 
-        room.winner = 'Fascists'; 
+        room.winner = 'Fascists (6 Fascist Policies Enacted!)'; 
+        broadcastState(roomCode);
+        return;
     } else {
         if (enacted === 'Fascist') {
             const fp = room.fascistPolicies;
@@ -408,7 +456,7 @@ function executeEnact(roomCode, enactIndex) {
                 return;
             }
         }
-        advanceTurn(room);
+        finishPresidentialTurn(room);
     }
     room.drawnCards = [];
     broadcastState(roomCode);
@@ -422,11 +470,10 @@ io.on('connection', (socket) => {
             code: roomCode, 
             status: 'LOBBY',
             hostId: socket.id, 
-            // Fixed Bug 1: Correctly applied cleanName here to lock character length limits
             players: [{ id: socket.id, name: cleanName, role: null, isBot: false, isDead: false, isDisconnected: false }],
             deck: [], discardPile: [], presidentIdx: 0, lastRegularPresidentIdx: 0, chancellorIdx: null,
             liberalPolicies: 0, fascistPolicies: 0, electionTracker: 0,
-            phase: 'SETUP', votes: {}, drawnCards: [], winner: null, specialPresidentActive: false,
+            phase: 'SETUP', votes: {}, drawnCards: [], winner: null, specialPresidentActive: false, pendingSpecialPresidentIdx: null,
             lastElectedPresidentId: null, lastElectedChancellorId: null, investigations: {}, bozbeyMode: false
         };
         socket.join(roomCode);
@@ -502,6 +549,7 @@ io.on('connection', (socket) => {
         room.lastElectedChancellorId = null;
         room.investigations = {};
         room.specialPresidentActive = false;
+        room.pendingSpecialPresidentIdx = null;
         room.discardPile = [];
         room.deck = [];
 
@@ -513,9 +561,15 @@ io.on('connection', (socket) => {
         broadcastState(roomCode);
     });
 
-    socket.on('castVote', ({ roomCode, dummy }) => {
-        // Safe check preventing client translation sync queries from executing real logic
-        if (dummy && roomCode === null) return; 
+    // Term Termination Handler
+    socket.on('terminateTerm', (roomCode) => {
+        if (!roomCode) return;
+        const room = rooms[roomCode.toUpperCase()];
+        if (!room || room.phase !== 'END_PRESIDENTIAL_TERM') return;
+        if (room.players[room.presidentIdx].id !== socket.id) return;
+
+        completeTurnAdvance(room);
+        broadcastState(roomCode);
     });
 
     socket.on('joinRoom', ({ roomCode, playerName }) => {
@@ -583,6 +637,27 @@ io.on('connection', (socket) => {
         evaluateVotes(roomCode);
     });
 
+    socket.on('requestVeto', (roomCode) => {
+        if (!roomCode) return;
+        const room = rooms[roomCode.toUpperCase()];
+        if (!room || room.phase !== 'LEGISLATIVE_CHANCELLOR') return;
+        if (room.players[room.chancellorIdx].id !== socket.id) return;
+        if (room.fascistPolicies !== 5) return;
+
+        room.phase = 'VETO_REQUEST';
+        broadcastState(roomCode);
+    });
+
+    socket.on('respondToVeto', ({ roomCode, accept }) => {
+        if (!roomCode) return;
+        const room = rooms[roomCode.toUpperCase()];
+        if (!room || room.phase !== 'VETO_REQUEST') return;
+        if (room.players[room.presidentIdx].id !== socket.id) return;
+
+        executeVetoResolution(room, accept);
+        broadcastState(roomCode);
+    });
+
     socket.on('presidentDiscard', ({ roomCode, keepIndex1, keepIndex2 }) => {
         if (!roomCode) return;
         const room = rooms[roomCode.toUpperCase()];
@@ -607,7 +682,7 @@ io.on('connection', (socket) => {
         if (!roomCode) return;
         const room = rooms[roomCode.toUpperCase()];
         if (!room || room.phase !== 'PRESIDENTIAL_POWER_PEEK') return;
-        advanceTurn(room);
+        finishPresidentialTurn(room);
         broadcastState(roomCode);
     });
 
@@ -622,7 +697,7 @@ io.on('connection', (socket) => {
             if (!room.investigations[investigator.name]) room.investigations[investigator.name] = {};
             room.investigations[investigator.name][target.name] = party;
             socket.emit('investigationLoyaltyResult', { name: target.name, party: party });
-            advanceTurn(room);
+            finishPresidentialTurn(room);
             broadcastState(roomCode);
         }
     });
@@ -634,9 +709,8 @@ io.on('connection', (socket) => {
         const targetIdx = room.players.findIndex(p => p.id === targetId);
         if (targetIdx !== -1 && !room.players[targetIdx].isDead) {
             room.specialPresidentActive = true;
-            room.presidentIdx = targetIdx;
-            room.chancellorIdx = null;
-            room.phase = 'NOMINATION';
+            room.pendingSpecialPresidentIdx = targetIdx;
+            finishPresidentialTurn(room);
             broadcastState(roomCode);
         }
     });
@@ -646,16 +720,25 @@ io.on('connection', (socket) => {
         const room = rooms[roomCode.toUpperCase()];
         if (!room || room.phase !== 'PRESIDENTIAL_POWER_EXECUTION') return;
         const target = room.players.find(p => p.id === targetId);
+        const currentPresident = room.players[room.presidentIdx];
+
         if (target && !target.isDead) {
+            if (target.id === currentPresident.id && currentPresident.role !== 'Bozbey') {
+                return; 
+            }
+
             target.isDead = true;
+
+            io.to(roomCode.toUpperCase()).emit('playerExecuted', { victimName: target.name, victimRole: target.role });
+
             if (target.role === 'Bozbey') {
                 room.status = 'FINISHED';
-                room.winner = `Bozbey (${target.name} won!)`;
+                room.winner = `Bozbey (${target.name} won by getting executed!)`;
             } else if (target.role === 'Hitler') {
                 room.status = 'FINISHED';
                 room.winner = 'Liberals (Hitler was executed!)';
             } else {
-                advanceTurn(room);
+                finishPresidentialTurn(room);
             }
             broadcastState(roomCode);
         }
@@ -673,7 +756,13 @@ io.on('connection', (socket) => {
                     else delete rooms[code]; 
                 } else {
                     room.players[idx].isDisconnected = true;
-                    if (room.phase === 'VOTING') evaluateVotes(code);
+                    const currentPresident = room.players[room.presidentIdx];
+
+                    if (room.phase === 'END_PRESIDENTIAL_TERM' && currentPresident && currentPresident.id === socket.id) {
+                        completeTurnAdvance(room);
+                    } else if (room.phase === 'VOTING') {
+                        evaluateVotes(code);
+                    }
                 }
                 broadcastState(code);
                 break;

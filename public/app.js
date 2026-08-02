@@ -7,6 +7,8 @@ let localRoleBriefingSeen = false;
 let lastSavedState = null;
 let currentLang = 'en';
 
+let recordedPhase = null;
+
 const setupScreen = document.getElementById('setup-screen');
 const lobbyScreen = document.getElementById('lobby-screen');
 const gameScreen = document.getElementById('game-screen');
@@ -29,12 +31,27 @@ const policyAnimationOverlay = document.getElementById('policy-animation-overlay
 const flashPolicyTitle = document.getElementById('flash-policy-title');
 const btnClosePolicyFlash = document.getElementById('btn-close-policy-flash');
 
+const phaseTransitionOverlay = document.getElementById('phase-transition-overlay');
+const phaseTransitionText = document.getElementById('phase-transition-text');
+const executionOverlay = document.getElementById('execution-overlay');
+const executionVictimName = document.getElementById('execution-victim-name');
+const btnCloseExecutionModal = document.getElementById('btn-close-execution-modal');
+
 socket.on('connect', () => { myId = socket.id; });
 socket.on('errorMsg', alert);
 
 socket.on('investigationLoyaltyResult', (data) => {
     alert(`INVESTIGATION REPORT:\nPlayer "${data.name}" belongs to the ${data.party} Party alignment.`);
 });
+
+socket.on('playerExecuted', (data) => {
+    executionVictimName.textContent = data.victimName.toUpperCase();
+    executionOverlay.classList.remove('hidden');
+});
+
+btnCloseExecutionModal.onclick = () => {
+    executionOverlay.classList.add('hidden');
+};
 
 document.getElementById('btn-create').onclick = () => {
     const name = document.getElementById('username').value.trim();
@@ -137,7 +154,7 @@ const langPack = {
         phaseWord: "Phase",
         waitingTurnLoop: "Waiting for turn loop initialization...",
         yourTurnModalAlert: "Your turn! Please make a selection in the overlay popup window.",
-        nominationPresidentPrompt: "You are the President! Choose a living player to nominate as Chancellor:",
+        nominationPresidentPrompt: "You are the President! Choose a candidate to nominate as Chancellor:",
         nominationPassivePrompt: "Nomination Phase: Waiting for {name} to propose a Chancellor...",
         votingChoicePrompt: "President {pres} nominated \"{chan}\" as Chancellor. Cast your Government Vote:",
         votingDeceasedPassive: "You are deceased. Watching the election process unfold...",
@@ -164,7 +181,13 @@ const langPack = {
         powerExecutionPrompt: "EXECUTIVE POWER: Choose a player to EXECUTE (Killing Hitler awards Liberals victory):",
         powerExecutionPassive: "🚨 CRITICAL THREAT: The President is selecting a player for execution!",
         victoryTitle: "MATCH CONCLUDED!",
-        detectedParty: "🔍 PARTY:"
+        detectedParty: "🔍 PARTY:",
+        reasonTermLimit: "TERM LIMITED",
+        reasonYou: "YOU (PRESIDENT)",
+        reasonOffline: "OFFLINE",
+        btnTerminateTerm: "Terminate Term & Pass Presidency 🏛️",
+        endTermPrompt: "Your Presidential term actions are complete. Click below to hand over the presidency to the next candidate:",
+        endTermPassive: "Term Ending: Waiting for President {name} to terminate their term..."
     },
     tr: {
         usernamePlace: "İsminizi Girin",
@@ -209,7 +232,7 @@ const langPack = {
         phaseWord: "Evre",
         waitingTurnLoop: "Tur döngüsünün başlaması bekleniyor...",
         yourTurnModalAlert: "Senin sıran! Lütfen açılır pencereden bir seçim yap.",
-        nominationPresidentPrompt: "Cumhurbaşkanısın! Şansölye olarak atamak için yaşayan bir oyuncu seç:",
+        nominationPresidentPrompt: "Cumhurbaşkanısın! Şansölye olarak atamak için bir aday seç:",
         nominationPassivePrompt: "Adaylık Evresi: {name} isimli Cumhurbaşkanının Şansölye önermesi bekleniyor...",
         votingChoicePrompt: "Cumhurbaşkanı {pres}, \"{chan}\" oyuncusunu Şansölye adayı gösterdi. Hükümet için oy kullanın:",
         votingDeceasedPassive: "Öldün. Seçim sürecini izliyorsun...",
@@ -236,7 +259,13 @@ const langPack = {
         powerExecutionPrompt: "YÜRÜTME GÜCÜ: İDAM ETMEK için bir oyuncu seç (Hitler'i öldürmek Liberallere zafer kazandırır):",
         powerExecutionPassive: "🚨 KRİTİK TEHDİT: Cumhurbaşkanı idam için bir oyuncu seçiyor!",
         victoryTitle: "MAÇ SONUÇLANDI!",
-        detectedParty: "🔍 PARTİ:"
+        detectedParty: "🔍 PARTİ:",
+        reasonTermLimit: "DÖNEM SINIRI",
+        reasonYou: "SEN (BAŞKAN)",
+        reasonOffline: "ÇEVRİMDİŞİ",
+        btnTerminateTerm: "Görevi Sonlandır ve Devret 🏛️",
+        endTermPrompt: "Cumhurbaşkanlığı turlarınız tamamlandı. Görevi devretmek ve sonraki adaya geçmek için aşağıdaki butona basın:",
+        endTermPassive: "Görev Sonu: Cumhurbaşkanı {name} görevi devretmesi bekleniyor..."
     }
 };
 
@@ -305,6 +334,16 @@ langSelect.onchange = () => {
     updateStaticTranslations();
 };
 
+function triggerPhaseTransitionAnimation(newPhase) {
+    if (!newPhase) return;
+    phaseTransitionText.textContent = `⚡ ${newPhase.replace(/_/g, ' ')}`;
+    phaseTransitionOverlay.classList.remove('hidden');
+    
+    setTimeout(() => {
+        phaseTransitionOverlay.classList.add('hidden');
+    }, 1800);
+}
+
 function getLocalizedRole(roleName) {
     if (!roleName) return "";
     const pack = langPack[currentLang];
@@ -349,6 +388,7 @@ socket.on('gameStateUpdate', (state) => {
         localRoleBriefingSeen = false;
         recordedLiberalLaws = null;
         recordedFascistLaws = null;
+        recordedPhase = null;
 
         setupScreen.classList.add('hidden');
         gameScreen.classList.add('hidden');
@@ -394,6 +434,11 @@ socket.on('gameStateUpdate', (state) => {
 
         updateChaosTracker(state.electionTracker);
 
+        if (recordedPhase !== null && recordedPhase !== state.phase) {
+            triggerPhaseTransitionAnimation(state.phase);
+        }
+        recordedPhase = state.phase;
+
         if (recordedLiberalLaws !== null && state.liberalPolicies > recordedLiberalLaws) {
             triggerFlashOverlayAnimation('Liberal');
         }
@@ -419,6 +464,8 @@ socket.on('gameStateUpdate', (state) => {
         renderTrack('liberal-slots-track', state.liberalPolicies, 5, 'Liberal', state.players.length);
         renderTrack('fascist-slots-track', state.fascistPolicies, 6, 'Fascist', state.players.length);
         
+        const myPlayerObj = state.players.find(p => p.id === myId);
+
         const pList = document.getElementById('game-players-list');
         pList.innerHTML = '';
         state.players.forEach(p => {
@@ -565,22 +612,67 @@ function renderControls(state) {
         return;
     }
 
-    if (state.phase === 'NOMINATION') {
+    // Term Termination Handler UI Rendering
+    if (state.phase === 'END_PRESIDENTIAL_TERM') {
+        if (amIPresident) {
+            isMyActionTurn = true;
+            prompt.textContent = pack.endTermPrompt;
+
+            const terminateBtn = document.createElement('button');
+            terminateBtn.className = "btn success-btn animate-pop";
+            terminateBtn.style.width = "100%";
+            terminateBtn.textContent = pack.btnTerminateTerm;
+            
+            terminateBtn.onclick = () => {
+                socket.emit('terminateTerm', currentRoomCode);
+                actionModalOverlay.classList.add('hidden');
+            };
+
+            ctrl.appendChild(terminateBtn);
+        } else {
+            const currentPresName = state.players.find(p => p.isPresident)?.name || "President";
+            fallbackStatusText = pack.endTermPassive.replace('{name}', currentPresName);
+        }
+    }
+    else if (state.phase === 'NOMINATION') {
         if (amIPresident) {
             isMyActionTurn = true;
             prompt.textContent = pack.nominationPresidentPrompt;
+
+            const grid = document.createElement('div');
+            grid.className = 'chancellor-nomination-grid';
+
             state.players.forEach(p => {
-                if (p.id !== myId && !p.isDead && !p.isDisconnected && p.isEligibleChancellor) {
-                    const btn = document.createElement('button');
-                    btn.className = "btn wood-btn secondary animate-pop";
-                    btn.textContent = p.name;
-                    btn.onclick = () => {
+                const isSelf = p.id === myId;
+                const isSelectable = !isSelf && !p.isDead && !p.isDisconnected && p.isEligibleChancellor;
+
+                const card = document.createElement('div');
+                card.className = `player-card ${isSelectable ? 'chancellor-card-selectable' : 'chancellor-card-disabled'}`;
+
+                let reasonBadge = '';
+                if (isSelf) reasonBadge = pack.reasonYou;
+                else if (p.isDead) reasonBadge = pack.badgeDead;
+                else if (p.isDisconnected) reasonBadge = pack.reasonOffline;
+                else if (!p.isEligibleChancellor) reasonBadge = pack.reasonTermLimit;
+
+                card.innerHTML = `
+                    <div class="player-card-name">${p.name}</div>
+                    <div class="player-card-badges-container">
+                        ${reasonBadge ? `<span class="badge-tag offline">${reasonBadge}</span>` : `<span class="badge-tag chan">SELECT</span>`}
+                    </div>
+                `;
+
+                if (isSelectable) {
+                    card.onclick = () => {
                         socket.emit('nominateChancellor', { roomCode: currentRoomCode, chancellorId: p.id });
                         actionModalOverlay.classList.add('hidden');
                     };
-                    ctrl.appendChild(btn);
                 }
+
+                grid.appendChild(card);
             });
+
+            ctrl.appendChild(grid);
         } else {
             const currentPresName = state.players.find(p => p.isPresident)?.name || "President";
             fallbackStatusText = pack.nominationPassivePrompt.replace('{name}', currentPresName);
@@ -590,7 +682,6 @@ function renderControls(state) {
         if(myPlayerObj && myPlayerObj.isDead) {
             fallbackStatusText = pack.votingDeceasedPassive;
         } else if (myPlayerObj && myPlayerObj.hasVoted) {
-            // Fixed: Enforces modal closure and passive display once ballot state confirms true
             fallbackStatusText = pack.votingVotedPassive;
         } else {
             isMyActionTurn = true;
@@ -816,16 +907,21 @@ function renderControls(state) {
             isMyActionTurn = true;
             prompt.textContent = pack.powerExecutionPrompt;
             state.players.forEach(p => {
-                if (p.id !== myId && !p.isDead && !p.isDisconnected) {
-                    const btn = document.createElement('button');
-                    btn.className = "btn wood-btn primary animate-pop";
-                    btn.style.boxShadow = "0 0 10px #ff3d00";
-                    btn.textContent = `${currentLang === 'tr' ? 'İdam Et:' : 'Execute'} ${p.name} ☠`;
-                    btn.onclick = () => {
-                        socket.emit('executeTargetPlayer', { roomCode: currentRoomCode, targetId: p.id });
-                        actionModalOverlay.classList.add('hidden');
-                    };
-                    ctrl.appendChild(btn);
+                const isSelf = p.id === myId;
+                const isBozbey = state.yourRole === 'Bozbey';
+
+                if (!p.isDead && !p.isDisconnected) {
+                    if (!isSelf || isBozbey) {
+                        const btn = document.createElement('button');
+                        btn.className = "btn wood-btn primary animate-pop";
+                        btn.style.boxShadow = "0 0 10px #ff3d00";
+                        btn.textContent = `${currentLang === 'tr' ? 'İdam Et:' : 'Execute'} ${p.name} ${isSelf ? '(YOU)' : ''} ☠`;
+                        btn.onclick = () => {
+                            socket.emit('executeTargetPlayer', { roomCode: currentRoomCode, targetId: p.id });
+                            actionModalOverlay.classList.add('hidden');
+                        };
+                        ctrl.appendChild(btn);
+                    }
                 }
             });
         } else {

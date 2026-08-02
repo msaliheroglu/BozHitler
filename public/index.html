@@ -8,6 +8,19 @@
 </head>
 <body>
     <div id="game-container">
+        <div id="phase-transition-overlay" class="phase-transition-banner hidden">
+            <div id="phase-transition-text" class="phase-banner-content">PHASE TRANSITION</div>
+        </div>
+
+        <div id="execution-overlay" class="full-screen-flash-overlay hidden">
+            <div class="flash-banner-content animate-pop">
+                <div class="stamp-badge" style="border-color:#ff3d00; color:#ff3d00;">☠ EXECUTION PERFORMED ☠</div>
+                <h2 id="execution-victim-name" class="flash-title" style="color:#ff3d00;">PLAYER EXECUTED</h2>
+                <p id="execution-subtext" style="color:#fff; font-size:1.2rem; letter-spacing:1px; margin-bottom:20px;">A player has been eliminated from the game!</p>
+                <button id="btn-close-execution-modal" class="btn wood-btn primary" style="min-width: 180px;">Continue</button>
+            </div>
+        </div>
+
         <div id="setup-screen" class="screen main-menu animate-fade">
             <h1 class="game-logo">Secret Hitler</h1>
             
