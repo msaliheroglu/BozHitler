@@ -128,7 +128,7 @@
             <div class="modal-card-box animate-pop">
                 <div class="modal-header-ribbon" id="lbl-action-ribbon">ACTION REQUIRED</div>
                 <div class="modal-inner-content">
-                    <p id="action-prompt">Choose an option to proceed:</p>
+                    <div id="action-prompt" style="font-size:1.2rem; color:#ffb300; margin-bottom:15px; line-height:1.4;">Choose an option to proceed:</div>
                     <div id="interactive-controls" class="button-row"></div>
                 </div>
             </div>
@@ -146,7 +146,12 @@
         <div id="end-screen" class="screen hidden animate-fade">
             <h1 id="victory-title" class="victory-banner">Victory!</h1>
             <p id="victory-reason" class="victory-subtext"></p>
-            <button id="btn-return-lobby" class="btn wood-btn primary">Return to Lobby</button>
+            <button id="btn-return-lobby" class="btn wood-btn primary" style="margin-bottom: 20px;">Return to Lobby</button>
+
+            <div class="seating-chart">
+                <h3 id="lbl-end-roles-title">ALL PLAYER ROLES REVEALED</h3>
+                <div id="end-game-players-list" class="players-card-grid-deck"></div>
+            </div>
         </div>
 
         <footer class="legal-credits-attribution">

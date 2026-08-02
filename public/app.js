@@ -154,7 +154,9 @@ const langPack = {
         phaseWord: "Phase",
         waitingTurnLoop: "Waiting for turn loop initialization...",
         yourTurnModalAlert: "Your turn! Please make a selection in the overlay popup window.",
-        nominationPresidentPrompt: "You are the President! Choose a candidate to nominate as Chancellor:",
+        presElectTitle: "PRESIDENT-ELECT",
+        chanElectTitle: "CHANCELLOR-ELECT CANDIDATE",
+        nominationPresidentPrompt: "Select a Candidate to Nominate as Chancellor-Elect:",
         nominationPassivePrompt: "Nomination Phase: Waiting for {name} to propose a Chancellor...",
         votingChoicePrompt: "President {pres} nominated \"{chan}\" as Chancellor. Cast your Government Vote:",
         votingDeceasedPassive: "You are deceased. Watching the election process unfold...",
@@ -185,9 +187,10 @@ const langPack = {
         reasonTermLimit: "TERM LIMITED",
         reasonYou: "YOU (PRESIDENT)",
         reasonOffline: "OFFLINE",
-        btnTerminateTerm: "Terminate Term & Pass Presidency 🏛️",
+        btnTerminateTerm: "End Term 🏛️",
         endTermPrompt: "Your Presidential term actions are complete. Click below to hand over the presidency to the next candidate:",
-        endTermPassive: "Term Ending: Waiting for President {name} to terminate their term..."
+        endTermPassive: "Term Ending: Waiting for President {name} to terminate their term...",
+        endRolesTitle: "ALL PLAYER ROLES REVEALED"
     },
     tr: {
         usernamePlace: "İsminizi Girin",
@@ -232,7 +235,9 @@ const langPack = {
         phaseWord: "Evre",
         waitingTurnLoop: "Tur döngüsünün başlaması bekleniyor...",
         yourTurnModalAlert: "Senin sıran! Lütfen açılır pencereden bir seçim yap.",
-        nominationPresidentPrompt: "Cumhurbaşkanısın! Şansölye olarak atamak için bir aday seç:",
+        presElectTitle: "SEÇİLEN CUMHURBAŞKANI",
+        chanElectTitle: "SEÇİLEN ŞANSÖLYE ADAYI",
+        nominationPresidentPrompt: "Şansölye Adayı Olarak Atamak İçin Bir Oyuncu Seçin:",
         nominationPassivePrompt: "Adaylık Evresi: {name} isimli Cumhurbaşkanının Şansölye önermesi bekleniyor...",
         votingChoicePrompt: "Cumhurbaşkanı {pres}, \"{chan}\" oyuncusunu Şansölye adayı gösterdi. Hükümet için oy kullanın:",
         votingDeceasedPassive: "Öldün. Seçim sürecini izliyorsun...",
@@ -263,9 +268,10 @@ const langPack = {
         reasonTermLimit: "DÖNEM SINIRI",
         reasonYou: "SEN (BAŞKAN)",
         reasonOffline: "ÇEVRİMDİŞİ",
-        btnTerminateTerm: "Görevi Sonlandır ve Devret 🏛️",
+        btnTerminateTerm: "Görevi Sonlandır 🏛️",
         endTermPrompt: "Cumhurbaşkanlığı turlarınız tamamlandı. Görevi devretmek ve sonraki adaya geçmek için aşağıdaki butona basın:",
-        endTermPassive: "Görev Sonu: Cumhurbaşkanı {name} görevi devretmesi bekleniyor..."
+        endTermPassive: "Görev Sonu: Cumhurbaşkanı {name} görevi devretmesi bekleniyor...",
+        endRolesTitle: "TÜM OYUNCU ROLLERİ AÇIKLANDI"
     }
 };
 
@@ -309,6 +315,7 @@ function updateStaticTranslations() {
     setTxt('lbl-flash-subtext', pack.flashSubtext);
     setTxt('btn-close-policy-flash', pack.btnContinue);
     setTxt('btn-return-lobby', pack.btnReturnLobby);
+    setTxt('lbl-end-roles-title', pack.endRolesTitle);
     
     if (lastSavedState) {
         const fakeStateUpdateEvent = new CustomEvent('forceLocalRefresh');
@@ -366,6 +373,23 @@ function syncRoomCodeText(code) {
     document.querySelectorAll('.display-code-global').forEach(el => {
         el.textContent = code;
     });
+}
+
+function createPlayerGridCard(p, isSelectable, reasonBadge, onClickFn) {
+    const card = document.createElement('div');
+    card.className = `player-card ${isSelectable ? 'chancellor-card-selectable' : 'chancellor-card-disabled'}`;
+
+    card.innerHTML = `
+        <div class="player-card-name">${p.name}</div>
+        <div class="player-card-badges-container">
+            ${reasonBadge ? `<span class="badge-tag offline">${reasonBadge}</span>` : `<span class="badge-tag chan">SELECT</span>`}
+        </div>
+    `;
+
+    if (isSelectable && onClickFn) {
+        card.onclick = onClickFn;
+    }
+    return card;
 }
 
 socket.on('roomCreated', (code) => {
@@ -530,6 +554,34 @@ socket.on('gameStateUpdate', (state) => {
 
         document.getElementById('victory-title').textContent = pack.victoryTitle;
         document.getElementById('victory-reason').textContent = state.winner;
+
+        const endRolesList = document.getElementById('end-game-players-list');
+        if (endRolesList) {
+            endRolesList.innerHTML = '';
+            state.players.forEach(p => {
+                const card = document.createElement('div');
+                card.className = `player-card ${p.isDead ? 'dead-player' : ''}`;
+
+                const nameSpan = document.createElement('div');
+                nameSpan.className = 'player-card-name';
+                nameSpan.innerHTML = `${p.name} ${p.id === myId ? `<strong style="color:#ffca28;">${pack.badgeYouSuffix}</strong>` : ''}`;
+                card.appendChild(nameSpan);
+
+                const badgesContainer = document.createElement('div');
+                badgesContainer.className = 'player-card-badges-container';
+
+                if (p.revealedRole) {
+                    const roleTag = document.createElement('div');
+                    roleTag.className = `player-card-role-block role-block-${p.revealedRole.toLowerCase()}`;
+                    roleTag.style.width = "90%";
+                    roleTag.style.fontSize = "0.9rem";
+                    roleTag.textContent = getLocalizedRole(p.revealedRole);
+                    badgesContainer.appendChild(roleTag);
+                }
+                card.appendChild(badgesContainer);
+                endRolesList.appendChild(card);
+            });
+        }
     }
 });
 
@@ -612,7 +664,6 @@ function renderControls(state) {
         return;
     }
 
-    // Term Termination Handler UI Rendering
     if (state.phase === 'END_PRESIDENTIAL_TERM') {
         if (amIPresident) {
             isMyActionTurn = true;
@@ -637,7 +688,15 @@ function renderControls(state) {
     else if (state.phase === 'NOMINATION') {
         if (amIPresident) {
             isMyActionTurn = true;
-            prompt.textContent = pack.nominationPresidentPrompt;
+            const currentPresObj = state.players.find(p => p.isPresident);
+            const currentPresName = currentPresObj ? currentPresObj.name : "President";
+
+            prompt.innerHTML = `
+                <div style="border-bottom:1px solid #ffb300; padding-bottom:6px; margin-bottom:8px; font-weight:bold; color:#ffb300;">
+                    ${pack.presElectTitle}: ${currentPresName}
+                </div>
+                <div style="font-size:1.05rem; color:#fff;">${pack.nominationPresidentPrompt}</div>
+            `;
 
             const grid = document.createElement('div');
             grid.className = 'chancellor-nomination-grid';
@@ -646,28 +705,16 @@ function renderControls(state) {
                 const isSelf = p.id === myId;
                 const isSelectable = !isSelf && !p.isDead && !p.isDisconnected && p.isEligibleChancellor;
 
-                const card = document.createElement('div');
-                card.className = `player-card ${isSelectable ? 'chancellor-card-selectable' : 'chancellor-card-disabled'}`;
-
                 let reasonBadge = '';
                 if (isSelf) reasonBadge = pack.reasonYou;
                 else if (p.isDead) reasonBadge = pack.badgeDead;
                 else if (p.isDisconnected) reasonBadge = pack.reasonOffline;
                 else if (!p.isEligibleChancellor) reasonBadge = pack.reasonTermLimit;
 
-                card.innerHTML = `
-                    <div class="player-card-name">${p.name}</div>
-                    <div class="player-card-badges-container">
-                        ${reasonBadge ? `<span class="badge-tag offline">${reasonBadge}</span>` : `<span class="badge-tag chan">SELECT</span>`}
-                    </div>
-                `;
-
-                if (isSelectable) {
-                    card.onclick = () => {
-                        socket.emit('nominateChancellor', { roomCode: currentRoomCode, chancellorId: p.id });
-                        actionModalOverlay.classList.add('hidden');
-                    };
-                }
+                const card = createPlayerGridCard(p, isSelectable, reasonBadge, () => {
+                    socket.emit('nominateChancellor', { roomCode: currentRoomCode, chancellorId: p.id });
+                    actionModalOverlay.classList.add('hidden');
+                });
 
                 grid.appendChild(card);
             });
@@ -789,7 +836,8 @@ function renderControls(state) {
                     ctrl.appendChild(confirmRow);
                 }
 
-                if (state.fascistPolicies === 5) {
+                // Render Veto Button ONLY if fascist policies == 5 AND veto was not denied this turn
+                if (state.fascistPolicies === 5 && !state.vetoDenied) {
                     const vetoBtn = document.createElement('button');
                     vetoBtn.className = "btn control-btn animate-pop";
                     vetoBtn.style.background = "linear-gradient(to bottom, #ff3d00, #c62828)";
@@ -865,18 +913,28 @@ function renderControls(state) {
         if (amIPresident) {
             isMyActionTurn = true;
             prompt.textContent = pack.powerInvestigatePrompt;
+
+            const grid = document.createElement('div');
+            grid.className = 'chancellor-nomination-grid';
+
             state.players.forEach(p => {
-                if (p.id !== myId && !p.isDead && !p.isDisconnected) {
-                    const btn = document.createElement('button');
-                    btn.className = "btn control-btn animate-pop";
-                    btn.textContent = `${currentLang === 'tr' ? 'Araştır:' : 'Investigate'} ${p.name}`;
-                    btn.onclick = () => {
-                        socket.emit('investigateLoyalty', { roomCode: currentRoomCode, targetId: p.id });
-                        actionModalOverlay.classList.add('hidden');
-                    };
-                    ctrl.appendChild(btn);
-                }
+                const isSelf = p.id === myId;
+                const isSelectable = !isSelf && !p.isDead && !p.isDisconnected;
+
+                let reasonBadge = '';
+                if (isSelf) reasonBadge = pack.reasonYou;
+                else if (p.isDead) reasonBadge = pack.badgeDead;
+                else if (p.isDisconnected) reasonBadge = pack.reasonOffline;
+
+                const card = createPlayerGridCard(p, isSelectable, reasonBadge, () => {
+                    socket.emit('investigateLoyalty', { roomCode: currentRoomCode, targetId: p.id });
+                    actionModalOverlay.classList.add('hidden');
+                });
+
+                grid.appendChild(card);
             });
+
+            ctrl.appendChild(grid);
         } else {
             fallbackStatusText = pack.powerInvestigatePassive;
         }
@@ -885,19 +943,28 @@ function renderControls(state) {
         if (amIPresident) {
             isMyActionTurn = true;
             prompt.textContent = pack.powerElectionPrompt;
+
+            const grid = document.createElement('div');
+            grid.className = 'chancellor-nomination-grid';
+
             state.players.forEach(p => {
-                if (p.id !== myId && !p.isDead && !p.isDisconnected) {
-                    const btn = document.createElement('button');
-                    btn.className = "btn control-btn animate-pop";
-                    btn.style.background = "linear-gradient(to bottom, #9c27b0, #6a1b9a)";
-                    btn.textContent = `${currentLang === 'tr' ? 'Ata:' : 'Appoint'} ${p.name}`;
-                    btn.onclick = () => {
-                        socket.emit('callSpecialElection', { roomCode: currentRoomCode, targetId: p.id });
-                        actionModalOverlay.classList.add('hidden');
-                    };
-                    ctrl.appendChild(btn);
-                }
+                const isSelf = p.id === myId;
+                const isSelectable = !isSelf && !p.isDead && !p.isDisconnected;
+
+                let reasonBadge = '';
+                if (isSelf) reasonBadge = pack.reasonYou;
+                else if (p.isDead) reasonBadge = pack.badgeDead;
+                else if (p.isDisconnected) reasonBadge = pack.reasonOffline;
+
+                const card = createPlayerGridCard(p, isSelectable, reasonBadge, () => {
+                    socket.emit('callSpecialElection', { roomCode: currentRoomCode, targetId: p.id });
+                    actionModalOverlay.classList.add('hidden');
+                });
+
+                grid.appendChild(card);
             });
+
+            ctrl.appendChild(grid);
         } else {
             fallbackStatusText = pack.powerElectionPassive;
         }
@@ -906,24 +973,29 @@ function renderControls(state) {
         if (amIPresident) {
             isMyActionTurn = true;
             prompt.textContent = pack.powerExecutionPrompt;
+
+            const grid = document.createElement('div');
+            grid.className = 'chancellor-nomination-grid';
+
             state.players.forEach(p => {
                 const isSelf = p.id === myId;
                 const isBozbey = state.yourRole === 'Bozbey';
+                const isSelectable = !p.isDead && !p.isDisconnected && (!isSelf || isBozbey);
 
-                if (!p.isDead && !p.isDisconnected) {
-                    if (!isSelf || isBozbey) {
-                        const btn = document.createElement('button');
-                        btn.className = "btn wood-btn primary animate-pop";
-                        btn.style.boxShadow = "0 0 10px #ff3d00";
-                        btn.textContent = `${currentLang === 'tr' ? 'İdam Et:' : 'Execute'} ${p.name} ${isSelf ? '(YOU)' : ''} ☠`;
-                        btn.onclick = () => {
-                            socket.emit('executeTargetPlayer', { roomCode: currentRoomCode, targetId: p.id });
-                            actionModalOverlay.classList.add('hidden');
-                        };
-                        ctrl.appendChild(btn);
-                    }
-                }
+                let reasonBadge = '';
+                if (isSelf && !isBozbey) reasonBadge = pack.reasonYou;
+                else if (p.isDead) reasonBadge = pack.badgeDead;
+                else if (p.isDisconnected) reasonBadge = pack.reasonOffline;
+
+                const card = createPlayerGridCard(p, isSelectable, reasonBadge, () => {
+                    socket.emit('executeTargetPlayer', { roomCode: currentRoomCode, targetId: p.id });
+                    actionModalOverlay.classList.add('hidden');
+                });
+
+                grid.appendChild(card);
             });
+
+            ctrl.appendChild(grid);
         } else {
             fallbackStatusText = pack.powerExecutionPassive;
         }

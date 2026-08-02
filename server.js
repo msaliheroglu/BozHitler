@@ -15,7 +15,7 @@ const botNames = ["Bot Alpha", "Bot Beta", "Bot Gamma", "Bot Delta", "Bot Epsilo
 function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
+        [array[i], array[j]] = [array[i], array[j]];
     }
     return array;
 }
@@ -91,11 +91,14 @@ function getSanitizedState(room, playerId) {
         roomCode: room.code,
         status: room.status,
         bozbeyMode: room.bozbeyMode,
+        vetoDenied: room.vetoDenied || false, // Pass single-veto flag to clients
         amIHost: currentHostPlayer && currentHostPlayer.id === playerId, 
         players: room.players.map(p => {
             let roleToReveal = null;
             
-            if (player) {
+            if (room.status === 'FINISHED') {
+                roleToReveal = p.role;
+            } else if (player) {
                 if (player.role === 'Fascist' && (p.role === 'Fascist' || p.role === 'Hitler')) {
                     roleToReveal = p.role;
                 }
@@ -156,15 +159,15 @@ function broadcastState(roomCode) {
     triggerBotActions(roomCode);
 }
 
-// Step 1: Hold turn at END_PRESIDENTIAL_TERM until the outgoing president terminates their term
 function finishPresidentialTurn(room) {
     if (room.status !== 'IN_PROGRESS') return;
     room.phase = 'END_PRESIDENTIAL_TERM';
     room.drawnCards = [];
 }
 
-// Step 2: Hand over the presidency to the next candidate after termination confirmation
 function completeTurnAdvance(room) {
+    room.vetoDenied = false; // Reset single-veto flag on turn handover
+
     if (room.specialPresidentActive && room.pendingSpecialPresidentIdx !== null) {
         room.presidentIdx = room.pendingSpecialPresidentIdx;
         room.pendingSpecialPresidentIdx = null;
@@ -241,7 +244,8 @@ function triggerBotActions(roomCode) {
         }
 
         if (room.phase === 'LEGISLATIVE_CHANCELLOR' && currentChancellor?.isBot) {
-            if (room.fascistPolicies === 5 && currentChancellor.role === 'Liberal' && !room.drawnCards.includes('Liberal')) {
+            // AI Chancellor respects vetoDenied
+            if (room.fascistPolicies === 5 && !room.vetoDenied && currentChancellor.role === 'Liberal' && !room.drawnCards.includes('Liberal')) {
                 room.phase = 'VETO_REQUEST';
                 broadcastState(roomCode);
                 return;
@@ -318,8 +322,10 @@ function checkAndReplenishDeck(room) {
     }
 }
 
+// Single-Veto Resolution Engine
 function executeVetoResolution(room, accept) {
     if (accept) {
+        room.vetoDenied = false;
         room.discardPile.push(room.drawnCards[0]);
         room.discardPile.push(room.drawnCards[1]);
         room.drawnCards = [];
@@ -343,6 +349,8 @@ function executeVetoResolution(room, accept) {
         }
         finishPresidentialTurn(room);
     } else {
+        // Veto denied: Mark as denied so Chancellor CANNOT veto again this turn
+        room.vetoDenied = true;
         room.phase = 'LEGISLATIVE_CHANCELLOR'; 
     }
 }
@@ -474,7 +482,7 @@ io.on('connection', (socket) => {
             deck: [], discardPile: [], presidentIdx: 0, lastRegularPresidentIdx: 0, chancellorIdx: null,
             liberalPolicies: 0, fascistPolicies: 0, electionTracker: 0,
             phase: 'SETUP', votes: {}, drawnCards: [], winner: null, specialPresidentActive: false, pendingSpecialPresidentIdx: null,
-            lastElectedPresidentId: null, lastElectedChancellorId: null, investigations: {}, bozbeyMode: false
+            lastElectedPresidentId: null, lastElectedChancellorId: null, investigations: {}, bozbeyMode: false, vetoDenied: false
         };
         socket.join(roomCode);
         socket.emit('roomCreated', roomCode);
@@ -552,6 +560,7 @@ io.on('connection', (socket) => {
         room.pendingSpecialPresidentIdx = null;
         room.discardPile = [];
         room.deck = [];
+        room.vetoDenied = false;
 
         room.players.forEach(p => {
             p.role = null;
@@ -561,7 +570,6 @@ io.on('connection', (socket) => {
         broadcastState(roomCode);
     });
 
-    // Term Termination Handler
     socket.on('terminateTerm', (roomCode) => {
         if (!roomCode) return;
         const room = rooms[roomCode.toUpperCase()];
@@ -643,6 +651,7 @@ io.on('connection', (socket) => {
         if (!room || room.phase !== 'LEGISLATIVE_CHANCELLOR') return;
         if (room.players[room.chancellorIdx].id !== socket.id) return;
         if (room.fascistPolicies !== 5) return;
+        if (room.vetoDenied) return; // Block second veto request
 
         room.phase = 'VETO_REQUEST';
         broadcastState(roomCode);
